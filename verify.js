@@ -14,6 +14,10 @@
  *   - I1: seq strict +1 from 0;  I2/I9: t_ns strict constant step;  I3: flags
  *     one-hot on every frame;
  *   - corruption probe: one flipped payload byte must be rejected by CRC.
+ * Then over the §8 crossfade vector speech_to_idle.fc14 (committed .b64):
+ *   - byte length, chunk count, every header field, the flag pattern
+ *     (SPEAKING x3 → IDLE x3) and the per-chunk CRCs against the EXPECTED pin;
+ *   - stream invariants: seq strict +1, t_ns step == chunk_size*1e9/fps.
  *
  * Usage: node verify.js [facecontract_vectors.json]
  * Exit 0 and "LOCKED. N frames verified." only if everything holds.
@@ -241,15 +245,107 @@ function main() {
   }
   console.log(`corruption probe: crc rejection ${probeOk ? "OK" : "FAIL"}`);
 
-  const expectedCount = 16;
+  // ── §8 crossfade vector: speech_to_idle.fc14 (committed .b64) ──────────────
+  // EXPECTED pin, JS side: the raw stream is decoded independently (no shared
+  // code with Python) and checked against the constants below, pinned from the
+  // generator output on 2026-11-26. The .b64 byte length is pinned too, so a
+  // truncated or hand-edited .b64 fails here before anything downstream.
+  const streamExpected = {
+    file: path.join(__dirname, "test_vectors", "speech_to_idle.fc14.b64"),
+    bytes: 3288,
+    chunks: 6,
+    bsCount: 32,
+    chunkSize: 4,
+    fps: 30,
+    durUs: 133333,
+    t0Ns: 7000000000,
+    stepNs: Math.floor((4 * 1e9) / 30),          // 133333333, spec-derived
+    flags: [FLAG_SPEAKING, FLAG_SPEAKING, FLAG_SPEAKING,
+            FLAG_IDLE, FLAG_IDLE, FLAG_IDLE],
+    chunkCrcs: ["15F197BB", "1F3FC4FA", "20F3C80F",
+                "D8A14E96", "7ABE7D0D", "2A741F6C"],
+  };
+  const streamFrames = [];
+  let streamOk = true;
+  try {
+    const raw = Buffer.from(fs.readFileSync(streamExpected.file, "utf8"), "base64");
+    if (raw.length !== streamExpected.bytes) {
+      throw new ContractError(
+        `b64 decoded to ${raw.length} bytes, expected ${streamExpected.bytes} (truncated .b64?)`);
+    }
+    const bufs = [];
+    let off = 0;
+    while (off < raw.length) {
+      if (raw.length - off < FRAME_OVERHEAD) {
+        throw new ContractError(`trailing bytes at ${off}: not a full header`);
+      }
+      const plen = raw.readUInt32LE(off + 20);
+      bufs.push(raw.subarray(off, off + FRAME_OVERHEAD + plen));
+      off += FRAME_OVERHEAD + plen;
+    }
+    if (bufs.length !== streamExpected.chunks) {
+      throw new ContractError(
+        `expected ${streamExpected.chunks} chunks, got ${bufs.length}`);
+    }
+    for (let i = 0; i < bufs.length; i++) {
+      const buf = bufs[i];
+      const d = decodeFrame(buf);        // CRC + one-hot + lengths inside
+      const problems = [];
+      if (!encodeFrame(d).equals(buf)) problems.push("re-encode bytes differ");
+      if (crc32(buf) !== CRC_RESIDUE) problems.push("CRC residue mismatch");
+      if (crc32(buf.subarray(0, buf.length - 4)) !==
+          parseInt(streamExpected.chunkCrcs[i], 16)) {
+        problems.push(`chunk CRC != EXPECTED pin ${streamExpected.chunkCrcs[i]}`);
+      }
+      if (d.seq !== i) problems.push(`seq ${d.seq}!=${i}`);
+      if (d.t_ns !== streamExpected.t0Ns + i * streamExpected.stepNs) {
+        problems.push(`t_ns ${d.t_ns}!=${streamExpected.t0Ns + i * streamExpected.stepNs}`);
+      }
+      if (d.dur_us !== streamExpected.durUs) problems.push(`dur_us ${d.dur_us}`);
+      if (d.fps !== streamExpected.fps) problems.push(`fps ${d.fps}`);
+      if (d.chunk_size !== streamExpected.chunkSize) {
+        problems.push(`chunk_size ${d.chunk_size}`);
+      }
+      if (d.bs_count !== streamExpected.bsCount) problems.push(`bs_count ${d.bs_count}`);
+      if (d.flags !== streamExpected.flags[i]) {
+        problems.push(`flags ${flagName(d.flags)}!=${flagName(streamExpected.flags[i])}`);
+      }
+      if (problems.length) {
+        streamOk = false;
+        console.log(`vector chunk ${i}: FAIL (${problems.join("; ")})`);
+      } else {
+        console.log(`vector chunk ${i}: seq=${d.seq} flags=${flagName(d.flags)} ` +
+          `crc=PINNED residue=OK roundtrip=OK`);
+      }
+      streamFrames.push(d);
+    }
+    // Stream invariant: t_ns step must equal the ground-truth formula (§4).
+    if (streamFrames.length > 1) {
+      const streamStep = streamFrames[1].t_ns - streamFrames[0].t_ns;
+      if (streamStep !== streamExpected.stepNs) {
+        streamOk = false;
+        console.log(`vector invariants: t_ns step ${streamStep} != ` +
+          `chunk_size*1e9/fps ${streamExpected.stepNs}`);
+      }
+    }
+  } catch (err) {
+    streamOk = false;
+    console.log(`speech_to_idle stream: FAIL (${err.message})`);
+  }
+
+  const expectedCount = 16;            // session scenario frames
   if (failures === 0 && seqOk && stepOk && stepIsTruth && advisoryOk &&
-      flagOk && probeOk && decoded.length === expectedCount) {
-    console.log(`LOCKED. ${decoded.length} frames verified.`);
+      flagOk && probeOk && decoded.length === expectedCount &&
+      streamOk && streamFrames.length === streamExpected.chunks) {
+    console.log(
+      `LOCKED. ${decoded.length + streamFrames.length} frames verified.`);
     process.exit(0);
   }
   console.log(`FAILED: frames=${decoded.length}/${expectedCount} ` +
+    `stream=${streamFrames.length}/${streamExpected.chunks} ` +
     `failures=${failures} invariants=` +
-    `${seqOk && stepOk && stepIsTruth && advisoryOk && flagOk} probe=${probeOk}`);
+    `${seqOk && stepOk && stepIsTruth && advisoryOk && flagOk} probe=${probeOk} ` +
+    `streamOk=${streamOk}`);
   process.exit(1);
 }
 

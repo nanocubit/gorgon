@@ -144,3 +144,85 @@ export function unpackStream(buf) {
   }
   return out;
 }
+
+// CrossfadeFilter — reference implementation of PROTOCOL §7.2 (MUST).
+//
+// Called per-frame (not per-chunk) by the client render loop. The client
+// unpacks each frame's bsValues from the chunk, passes them here, and gets
+// back either the same array (no crossfade) or a new blended array.
+//
+// State machine:
+//   IDLE ─(isSpeaking=true)─► TRACKING (keeps the last rendered pose in _last)
+//   TRACKING ─(isSpeaking=false)─► BLENDING (_startMs=nowMs, _from=_last)
+//   BLENDING ─(progress>=1)─► IDLE
+//   BLENDING ─(isSpeaking=true)─► TRACKING (abort, resume speech)
+//
+// _from is the LAST SPEAKING pose, not the first idle frame. Capturing the
+// first idle frame instead would render it verbatim at progress=0 — the raw
+// speech→idle snap would pass through untouched and the blend would blend
+// idle into idle. verify_behavior.mjs Test 7 pins exactly this: without the
+// last-speech capture the transition delta stays at 0.23 instead of ~0.04.
+//
+// Pipeline order (§7.2): unpack → crossfade.processFrame → OEF (§7.1) → rig.
+export class CrossfadeFilter {
+  constructor(bsCount, crossfadeMs = 200) {
+    this.bsCount = bsCount;
+    this.crossfadeMs = crossfadeMs;
+    this._wasSpeaking = false;
+    this._startMs = null;
+    this._from = null;
+    this._last = null;      // last rendered pose — captured at the transition
+    this.active = false;
+  }
+
+  /**
+   * @param {Float32Array} bsValues - unpacked per-frame blendshapes, length bsCount
+   * @param {boolean} isSpeaking    - (chunk.flags & FLAG_SPEAKING) !== 0
+   * @param {number} nowMs          - client monotonic time
+   * @returns {Float32Array}        - same array if no crossfade, new if blending
+   */
+  processFrame(bsValues, isSpeaking, nowMs) {
+    // Speech resumed mid-crossfade: abort, no smoothing into idle.
+    if (this._startMs !== null && isSpeaking) {
+      this._startMs = null;
+      this._from = null;
+      this._wasSpeaking = true;
+      this.active = false;
+      this._last = Float32Array.from(bsValues);
+      return bsValues;
+    }
+
+    // Detect SPEAKING -> IDLE at frame boundary. Blend starts from the last
+    // SPEECH pose (this._last), so the raw snap is absorbed by the blend.
+    if (this._wasSpeaking && !isSpeaking && this._startMs === null) {
+      this._startMs = nowMs;
+      this._from = this._last
+        ? Float32Array.from(this._last)
+        : Float32Array.from(bsValues);
+    }
+    this._wasSpeaking = isSpeaking;
+
+    if (this._startMs === null) {
+      this.active = false;
+      this._last = Float32Array.from(bsValues);
+      return bsValues;
+    }
+
+    const progress = Math.min(1, (nowMs - this._startMs) / this.crossfadeMs);
+    if (progress >= 1) {
+      this._startMs = null;
+      this._from = null;
+      this.active = false;
+      this._last = Float32Array.from(bsValues);
+      return bsValues;
+    }
+
+    const out = new Float32Array(this.bsCount);
+    for (let i = 0; i < this.bsCount; i++) {
+      out[i] = this._from[i] * (1 - progress) + bsValues[i] * progress;
+    }
+    this.active = true;
+    this._last = Float32Array.from(out);
+    return out;
+  }
+}

@@ -12,6 +12,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   decodeFrame, crc32, CRC_RESIDUE, ContractError, unpackStream,
+  CrossfadeFilter, FLAG_SPEAKING,
 } from "./facecontract_v141.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -184,6 +185,91 @@ function runResidue(frames) {
     : `crc32(frame) == 0x${CRC_RESIDUE.toString(16)} for all ${frames.length} frames`);
 }
 
+function runCrossfadeTest() {
+  console.log("\n[7] Crossfade: SPEAKING→IDLE delta and idle settling (§7.2)");
+  const target = path.join(here, "test_vectors", "speech_to_idle.fc14");
+  if (!fs.existsSync(target)) {
+    check(false,
+      `${path.basename(target)} missing — run python test_vectors/decode_b64.py ` +
+      "or python facecontract_v141.py --vectors first");
+    return;
+  }
+
+  // Same unpacker as the idle vector — bs_count-agnostic.
+  const frames = unpackStream(fs.readFileSync(target));
+  const bsCount = frames[0].decoded.bs_count;
+  check(bsCount === 32, `bs_count is 32 (got ${bsCount})`);
+
+  // Flatten to per-frame samples. NOTE: isSpeaking tests FLAG_SPEAKING (0x02);
+  // FLAG_IDLE is the 0x01 bit, so (flags & 0x01) would classify every frame
+  // as speaking and the transition would never fire.
+  const perFrame = [];
+  let nowMs = 0;
+  for (const { decoded: fr } of frames) {
+    const isSpeaking = (fr.flags & FLAG_SPEAKING) !== 0;
+    const stride = fr.bs_count;
+    for (let f = 0; f < fr.chunk_size; f++) {
+      const v = new Float32Array(stride);
+      for (let c = 0; c < stride; c++) v[c] = fr.payload[f * stride + c];
+      perFrame.push({ values: v, isSpeaking, nowMs });
+      nowMs += 1000 / 30;
+    }
+  }
+  check(perFrame.length === 24, `24 frames loaded (got ${perFrame.length})`);
+
+  // Locate the SPEAKING→IDLE transition.
+  let transitionIdx = -1;
+  for (let i = 1; i < perFrame.length; i++) {
+    if (perFrame[i - 1].isSpeaking && !perFrame[i].isSpeaking) {
+      transitionIdx = i;
+      break;
+    }
+  }
+  check(transitionIdx === 12, `transition at frame 12 (got ${transitionIdx})`);
+
+  // jawOpen index from the frozen Core-32 order (CORE_IDX), not a hardcoded 10.
+  const jawIdx = CORE_IDX.jawOpen;
+  const cf = new CrossfadeFilter(bsCount, 200);
+  const outJaw = [];
+  for (const pf of perFrame) {
+    const blended = cf.processFrame(pf.values, pf.isSpeaking, pf.nowMs);
+    outJaw.push(blended[jawIdx]);
+  }
+
+  // Assert 1: the raw signal actually snaps at the transition (the test is
+  // meaningful only if it would fail without the filter).
+  const rawDelta = Math.abs(perFrame[transitionIdx].values[jawIdx]
+                          - perFrame[transitionIdx - 1].values[jawIdx]);
+  console.log(`    raw jawOpen delta at transition: ${rawDelta.toFixed(4)}`);
+  check(rawDelta > 0.15, `raw delta ${rawDelta.toFixed(4)} > 0.15 (test is meaningful)`);
+
+  // Assert 2: crossfaded per-frame delta stays small (no visible snap).
+  let maxDelta = 0;
+  for (let i = transitionIdx; i < Math.min(transitionIdx + 12, outJaw.length); i++) {
+    const d = Math.abs(outJaw[i] - outJaw[i - 1]);
+    if (d > maxDelta) maxDelta = d;
+  }
+  console.log(`    max crossfaded jawOpen delta in window: ${maxDelta.toFixed(4)}`);
+  check(maxDelta < 0.15, `crossfaded max delta ${maxDelta.toFixed(4)} < 0.15 (no snap)`);
+
+  // Assert 3: settles into the idle breathing range.
+  const tail = outJaw.slice(-5);
+  const tailMean = tail.reduce((a, b) => a + b, 0) / tail.length;
+  console.log(`    jawOpen tail mean: ${tailMean.toFixed(4)}`);
+  check(tailMean >= 0.02 && tailMean <= 0.06,
+        `tail in idle range [0.02, 0.06]`);
+
+  // Assert 4: crossfade was active for ~200 ms (6 frames @ 30 fps, ±2).
+  const cf2 = new CrossfadeFilter(bsCount, 200);
+  const activeFrames = [];
+  for (const pf of perFrame) {
+    cf2.processFrame(pf.values, pf.isSpeaking, pf.nowMs);
+    if (cf2.active) activeFrames.push(pf.nowMs);
+  }
+  check(Math.abs(activeFrames.length - 6) <= 2,
+        `crossfade active for ${activeFrames.length} frames (±2 of 6)`);
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────
 
 function main() {
@@ -209,10 +295,12 @@ function main() {
   runDecay(series);
   runIdleBase(series);
   runResidue(frames);
+  runCrossfadeTest();
 
   console.log("");
   if (failures.length === 0) {
-    console.log("BEHAVIOR OK — OEF tuning validated on idle_breathing_blink.fc14");
+    console.log("BEHAVIOR OK — OEF tuning validated on idle_breathing_blink.fc14, " +
+      "crossfade gate on speech_to_idle.fc14");
     process.exit(0);
   }
   console.log(`BEHAVIOR FAILED: ${failures.length} failure(s):`);

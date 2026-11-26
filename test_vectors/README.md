@@ -22,7 +22,14 @@ Either path is sufficient; both produce the same files.
 | `speech_ru_01.fc14` | 2604 | 3-frame utterance, Extended-52 |
 | `gap_sequence.fc14` | 2604 | seq 0, 1, 3 — all valid frames; gap handling is a client policy (§6.2) |
 | `idle_breathing_blink.fc14` | 4384 | 8 chunks Core-32, breathing + blink — input for `verify_behavior.mjs` |
+| `speech_to_idle.fc14` | 3288 | 6 chunks Core-32, SPEAKING→IDLE transition (raw jawOpen delta 0.23 at frame 11→12) — input for `verify.js` stream pin + `verify_behavior.mjs` Test 7 (§7.2 crossfade) |
 | `corrupted_crc.fc14` | 548 | silence with one flipped payload byte — must be rejected by decode |
 
-`verify_behavior.mjs` consumes `idle_breathing_blink.fc14`; run either restore
-or generation step first.
+`verify_behavior.mjs` consumes `idle_breathing_blink.fc14` (OEF gate) and
+`speech_to_idle.fc14` (crossfade gate); `verify.js` pins the speech_to_idle
+stream against its EXPECTED constants. Run either restore or generation step
+first.
+
+NB (measured 2026-11-26): `speech_ru_01.fc14` and `gap_sequence.fc14`
+genuinely collide on whole-blob CRC-32 (`0x3FA1D6A6` both, 2263 differing
+bytes) — see PROTOCOL §8. The CI golden pin anchors constants to file names.

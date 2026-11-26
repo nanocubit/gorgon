@@ -5,7 +5,7 @@
 **Magic:** `GRG1` (0x47 0x52 0x47 0x31)
 **Locked implementation (canon):** this repository —
 `facecontract_v141.py` (encoder/decoder, self-test) + `verify.js` (independent
-JS decoder, `LOCKED. 16 frames verified.`)
+JS decoder, `LOCKED. 22 frames verified.`)
 
 > Provenance note. An earlier sketch in the design thread used magic `FC14`
 > and a 28-byte header. That sketch was never committed as bytes. The locked
@@ -237,19 +237,35 @@ was optimistic did not materialize on this signal.
 **Tuning is state-dependent:** in `FLAG_IDLE` chunks the articulation profile
 degrades to static; in `FLAG_SPEAKING` it is mandatory.
 
-### 7.2 Crossfade on speech→idle transition — client-side MUST
+### 7.2 Crossfade on speech→idle transition (MUST)
 
-On the first frame with `FLAG_SPEAKING=0` after a run of `FLAG_SPEAKING=1`,
-the client MUST capture its current rendered pose and blend linearly to its
-neutral `IDLE_BASE_POSE` over ~200 ms. Rationale (thread decision): a
-server-side crossfade would require `idle_gen.peek()` to avoid a phase jump in
-the breathing cycle after the hangover; the client already has the rendered
-pose and the OEF, so the 5-line client blend is strictly simpler and keeps the
-server hold-lastModel semantics unchanged. No wire change.
+When the client receives a chunk with `FLAG_SPEAKING=0` after a run of
+`FLAG_SPEAKING=1`, it MUST blend from the last rendered speaking pose to
+the incoming idle pose over 200 ms (±50 ms).
 
-Server side remains: queue drains during `SPEECH_HANGOVER`, then hold-last
-tail until the hangover expires (v0 policy); late model chunks are rejected
-(§9).
+**Reference implementation:** `CrossfadeFilter` in `facecontract_v141.mjs`.
+Called per-frame: `processFrame(bsValues, isSpeaking, nowMs)`.
+Applied **before** One Euro Filter (§7.1), not after.
+
+**Abort on resume:** if `isSpeaking=true` arrives mid-crossfade (VAD resumed
+during the blend), the client MUST abort the crossfade immediately — do not
+blend toward idle. Reference implementation resets `_startMs = null` on this
+edge case.
+
+**Blend source:** the blend starts from the LAST SPEAKING pose, not from the
+first idle frame — at `progress=0` the filter renders `_from` verbatim, so
+capturing the first idle frame would let the raw snap pass through untouched
+and blend idle into idle. This is pinned by Test 7 (below).
+
+**Test coverage:** `verify_behavior.mjs` Test 7. Test vector:
+`speech_to_idle.fc14` (6 chunks, frame 11→12 transition with raw
+jawOpen delta 0.23; crossfaded max per-frame delta 0.0441 < 0.15,
+blend active exactly 6 frames @ 30 fps, idle tail mean 0.0300 —
+measured 2026-11-26).
+
+Server-side this is unnecessary: server emits `hold-last-model` during
+`SPEECH_HANGOVER`, so the last speech payload is stable. Client crossfade
+is what visually smooths the transition.
 
 ---
 
@@ -260,7 +276,7 @@ concatenation of frames (no container). The streams are binary, and the API
 used to seed this repository is text-only, so they are stored base64-encoded
 as `test_vectors/*.fc14.b64`; restore with `python test_vectors/decode_b64.py`.
 The encoder is deterministic — regeneration is byte-identical to the stored
-locked vectors (verified over all five files).
+locked vectors (verified over all six files).
 
 | File                        | Frames | bs_count | Size   | Purpose                              |
 |-----------------------------|-------:|---------:|-------:|--------------------------------------|
@@ -268,15 +284,23 @@ locked vectors (verified over all five files).
 | `speech_ru_01.fc14`         | 3      | 52       | 2604   | multi-frame utterance                |
 | `gap_sequence.fc14`         | 3      | 52       | 2604   | seq 0,1,3 (simulated loss)           |
 | `idle_breathing_blink.fc14` | 8      | 32       | 4384   | full idle cycle incl. blink          |
+| `speech_to_idle.fc14`       | 6      | 32       | 3288   | SPEAKING→IDLE transition — §7.2 crossfade MUST (Test 7) |
 | `corrupted_crc.fc14`        | 1      | 32       | 548    | negative: MUST be rejected (CRC)     |
 
 `head_pose_premium.fc14` is deferred: FLAG_HEAD_POSE is reserved for v1.5.
 A file whose byte length does not match §1 MUST be rejected with a specific
 "frame length mismatch" error, not a generic "bad frame" (§5.2).
 
-Consumers: `verify_behavior.mjs` (idle vector). The negative cases are also
-rebuilt in-memory by `test_facecontract_wire.py`; `corrupted_crc.fc14` is the
-on-disk negative case for any external decoder.
+Consumers: `verify_behavior.mjs` (idle vector + crossfade Test 7);
+`verify.js` pins the `speech_to_idle` stream (byte length, header fields,
+flag pattern, per-chunk CRCs — the JS-side EXPECTED); the CI "Golden CRC pin"
+locks the whole-blob CRC-32 of every stream.
+
+NB (measured 2026-11-26): whole-blob CRC-32 is a lock constant, not an
+identity — `speech_ru_01.fc14` and `gap_sequence.fc14` genuinely collide on
+it (both `0x3FA1D6A6`, 2263 differing bytes, confirmed by zlib, binascii and
+an independent JS CRC). The CI pin therefore anchors every constant to its
+file name, not merely to its presence in the self-test output.
 
 ---
 
