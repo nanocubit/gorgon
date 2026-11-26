@@ -270,6 +270,64 @@ function runCrossfadeTest() {
         `crossfade active for ${activeFrames.length} frames (±2 of 6)`);
 }
 
+function runCrossfadeAbortTest() {
+  console.log("\n[8] Crossfade abort-on-resume: isSpeaking=true mid-blend (§7.2)");
+  // Synthetic per-frame series — the abort edge is not in speech_to_idle.fc14
+  // (that stream never resumes speech mid-blend). §7.2: on isSpeaking=true
+  // mid-crossfade the filter MUST abort immediately (_startMs = null), return
+  // the raw frame untouched, and NOT blend toward idle.
+  const bsCount = 32;
+  const cf = new CrossfadeFilter(bsCount, 200);
+  const dt = 1000 / 30;
+  const jawIdx = CORE_IDX.jawOpen;
+  const speaking = () => {
+    const v = new Float32Array(bsCount);
+    v[jawIdx] = 0.30;                    // articulation
+    return v;
+  };
+  const idle = () => {
+    const v = new Float32Array(bsCount);
+    v[jawIdx] = 0.03;                    // breathing
+    return v;
+  };
+  let t = 0;
+
+  // t0..t2: SPEAKING — tracking mode, raw pass-through.
+  for (let i = 0; i < 3; i++) {
+    const inp = speaking();
+    const out = cf.processFrame(inp, true, t); t += dt;
+    check(Object.is(out, inp),
+          `speaking frame ${i}: pass-through (same array reference)`);
+  }
+
+  // t3: first IDLE — blend starts from the LAST SPEAKING pose (progress 0).
+  const idleIn = idle();
+  const blended = cf.processFrame(idleIn, false, t); t += dt;
+  check(cf.active === true, "crossfade active after first idle frame");
+  check(Math.abs(blended[jawIdx] - 0.30) < 0.001,
+        `progress-0 blend renders last speaking pose (${blended[jawIdx].toFixed(4)} ≈ 0.30, no snap)`);
+
+  // t4: SPEAKING mid-blend (~33 ms into a 200 ms blend) — MUST abort.
+  const resumeIn = speaking();
+  const resumed = cf.processFrame(resumeIn, true, t); t += dt;
+  check(Object.is(resumed, resumeIn),
+        "abort-on-resume: raw frame returned, no mixing toward idle");
+  check(!cf.active && resumed[jawIdx] === resumeIn[jawIdx],
+        `abort resets the blend (jaw ${resumed[jawIdx].toFixed(2)} == raw; a continued blend would read ~0.25)`);
+
+  // t5: SPEAKING continues — tracking again, pass-through.
+  const contIn = speaking();
+  const cont = cf.processFrame(contIn, true, t); t += dt;
+  check(Object.is(cont, contIn), "post-abort speaking frame: pass-through");
+
+  // t6: IDLE again — a NEW blend starts from the new last speaking pose.
+  const idle2 = idle();
+  const blended2 = cf.processFrame(idle2, false, t); t += dt;
+  check(cf.active === true, "new crossfade starts after resume + idle");
+  check(Math.abs(blended2[jawIdx] - 0.30) < 0.001,
+        `new blend also starts at last speaking pose (${blended2[jawIdx].toFixed(4)} ≈ 0.30)`);
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────
 
 function main() {
@@ -296,11 +354,12 @@ function main() {
   runIdleBase(series);
   runResidue(frames);
   runCrossfadeTest();
+  runCrossfadeAbortTest();
 
   console.log("");
   if (failures.length === 0) {
     console.log("BEHAVIOR OK — OEF tuning validated on idle_breathing_blink.fc14, " +
-      "crossfade gate on speech_to_idle.fc14");
+      "crossfade gate (Test 7) and abort-on-resume (Test 8) on speech_to_idle/synthetic §7.2 series");
     process.exit(0);
   }
   console.log(`BEHAVIOR FAILED: ${failures.length} failure(s):`);
