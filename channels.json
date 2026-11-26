@@ -1,0 +1,132 @@
+{
+  "artifact": "channels.json",
+  "wire_spec": "1.4.1",
+  "wire_note": "Metadata only \u2014 zero wire bytes change. Channel order and indices are frozen (PROTOCOL \u00a73).",
+  "version": "1.4.2-draft1",
+  "date": "2026-11-27",
+  "status": "unverified \u2014 no real rig has been driven through these names yet",
+  "channel_count": 72,
+  "levels": [
+    {
+      "level": 0,
+      "bs_count": 32,
+      "index_range": [
+        0,
+        31
+      ],
+      "name": "Core",
+      "order": "FROZEN \u2014 mirrors CORE32_CHANNEL_NAMES in facecontract_v141.py (PROTOCOL \u00a73)"
+    },
+    {
+      "level": 1,
+      "bs_count": 52,
+      "index_range": [
+        32,
+        51
+      ],
+      "name": "Extended",
+      "order": "ARKit canonical names absent from Core-32, in ARKit canonical relative order; committed by this artifact (PROTOCOL \u00a73)"
+    },
+    {
+      "level": 2,
+      "bs_count": 72,
+      "index_range": [
+        52,
+        71
+      ],
+      "name": "Premium",
+      "order": "FaceContract extension; per-channel coverage in the coverage field"
+    }
+  ],
+  "coverage_values": [
+    "genuine_gap",
+    "composition_alternative",
+    "redundant_with_arkit"
+  ],
+  "premium_coverage_counts": {
+    "genuine_gap": 10,
+    "genuine_gap_low_priority": 6,
+    "composition_alternative": 4,
+    "redundant_with_arkit": 6
+  },
+  "metahuman_policy": "metahuman_target is null everywhere \u2014 decision (a): no MetaHuman mapping is claimed; rig mapping is client-side retargeting (RETARGETING.md)",
+  "attribution": {
+    "arkit_52": "Per Apple ARFaceAnchor blendShapeLocations \u2014 52 canonical names; 51 of them appear at Level 1 (Core-32 carries 31 ARKit names + tongueOut).",
+    "nvidia_a2f": "Per NVIDIA Audio2Face-3D docs: 52 ARKit curves + 16 tongue extension curves + 5 rig-specific tuning curves (68 effective outputs with tongue enabled, 52 without). Cited, not counted by us.",
+    "metahuman_tongue": "Per Epic MetaHuman docs: 18 tongue-related Control Curves. Cited, not counted by us; see RETARGETING.md."
+  },
+  "channels": [
+    {"facecontract_idx": 0, "name": "eyeBlinkLeft", "level": 0, "arkit_aligned": true, "arkit_name": "eyeBlinkLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 1, "name": "eyeBlinkRight", "level": 0, "arkit_aligned": true, "arkit_name": "eyeBlinkRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 2, "name": "eyeWideLeft", "level": 0, "arkit_aligned": true, "arkit_name": "eyeWideLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 3, "name": "eyeWideRight", "level": 0, "arkit_aligned": true, "arkit_name": "eyeWideRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 4, "name": "browDownLeft", "level": 0, "arkit_aligned": true, "arkit_name": "browDownLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 5, "name": "browDownRight", "level": 0, "arkit_aligned": true, "arkit_name": "browDownRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 6, "name": "browInnerUp", "level": 0, "arkit_aligned": true, "arkit_name": "browInnerUp", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 7, "name": "jawForward", "level": 0, "arkit_aligned": true, "arkit_name": "jawForward", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 8, "name": "jawLeft", "level": 0, "arkit_aligned": true, "arkit_name": "jawLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 9, "name": "jawRight", "level": 0, "arkit_aligned": true, "arkit_name": "jawRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 10, "name": "jawOpen", "level": 0, "arkit_aligned": true, "arkit_name": "jawOpen", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 11, "name": "mouthFunnel", "level": 0, "arkit_aligned": true, "arkit_name": "mouthFunnel", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 12, "name": "mouthPucker", "level": 0, "arkit_aligned": true, "arkit_name": "mouthPucker", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 13, "name": "mouthSmileLeft", "level": 0, "arkit_aligned": true, "arkit_name": "mouthSmileLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 14, "name": "mouthSmileRight", "level": 0, "arkit_aligned": true, "arkit_name": "mouthSmileRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 15, "name": "mouthFrownLeft", "level": 0, "arkit_aligned": true, "arkit_name": "mouthFrownLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 16, "name": "mouthFrownRight", "level": 0, "arkit_aligned": true, "arkit_name": "mouthFrownRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 17, "name": "mouthStretchLeft", "level": 0, "arkit_aligned": true, "arkit_name": "mouthStretchLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 18, "name": "mouthStretchRight", "level": 0, "arkit_aligned": true, "arkit_name": "mouthStretchRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 19, "name": "mouthLowerDownLeft", "level": 0, "arkit_aligned": true, "arkit_name": "mouthLowerDownLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 20, "name": "mouthLowerDownRight", "level": 0, "arkit_aligned": true, "arkit_name": "mouthLowerDownRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 21, "name": "mouthUpperUpLeft", "level": 0, "arkit_aligned": true, "arkit_name": "mouthUpperUpLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 22, "name": "mouthUpperUpRight", "level": 0, "arkit_aligned": true, "arkit_name": "mouthUpperUpRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 23, "name": "mouthClose", "level": 0, "arkit_aligned": true, "arkit_name": "mouthClose", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified", "semantic_variants": ["arkit-canonical", "nvidia-a2f"], "wire_semantics": "1.0 = lips pressed/closed; 0.0 = not closed. Lip parting independent of jaw position is mouthLipsPart (idx 69) with jawOpen, NOT mouthClose=0.0 + jawOpen=0 \u2014 the latter is the idle resting face, the former is deliberate parting. Compatible with the ARKit-canonical and NVIDIA A2F readings of mouthClose."},
+    {"facecontract_idx": 24, "name": "mouthPressLeft", "level": 0, "arkit_aligned": true, "arkit_name": "mouthPressLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 25, "name": "mouthPressRight", "level": 0, "arkit_aligned": true, "arkit_name": "mouthPressRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 26, "name": "cheekPuff", "level": 0, "arkit_aligned": true, "arkit_name": "cheekPuff", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 27, "name": "cheekSquintLeft", "level": 0, "arkit_aligned": true, "arkit_name": "cheekSquintLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 28, "name": "cheekSquintRight", "level": 0, "arkit_aligned": true, "arkit_name": "cheekSquintRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 29, "name": "noseSneerLeft", "level": 0, "arkit_aligned": true, "arkit_name": "noseSneerLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 30, "name": "noseSneerRight", "level": 0, "arkit_aligned": true, "arkit_name": "noseSneerRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 31, "name": "tongueOut", "level": 0, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "status": "unverified", "recommendation": "No ARKit name: tongueOut is a FaceContract channel. ARKit rigs have no tongue channel; map to rig tongue curves if present, else ignore. See RETARGETING.md."},
+    {"facecontract_idx": 32, "name": "browOuterUpLeft", "level": 1, "arkit_aligned": true, "arkit_name": "browOuterUpLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 33, "name": "browOuterUpRight", "level": 1, "arkit_aligned": true, "arkit_name": "browOuterUpRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 34, "name": "eyeLookDownLeft", "level": 1, "arkit_aligned": true, "arkit_name": "eyeLookDownLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 35, "name": "eyeLookDownRight", "level": 1, "arkit_aligned": true, "arkit_name": "eyeLookDownRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 36, "name": "eyeLookInLeft", "level": 1, "arkit_aligned": true, "arkit_name": "eyeLookInLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 37, "name": "eyeLookInRight", "level": 1, "arkit_aligned": true, "arkit_name": "eyeLookInRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 38, "name": "eyeLookOutLeft", "level": 1, "arkit_aligned": true, "arkit_name": "eyeLookOutLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 39, "name": "eyeLookOutRight", "level": 1, "arkit_aligned": true, "arkit_name": "eyeLookOutRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 40, "name": "eyeLookUpLeft", "level": 1, "arkit_aligned": true, "arkit_name": "eyeLookUpLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 41, "name": "eyeLookUpRight", "level": 1, "arkit_aligned": true, "arkit_name": "eyeLookUpRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 42, "name": "eyeSquintLeft", "level": 1, "arkit_aligned": true, "arkit_name": "eyeSquintLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 43, "name": "eyeSquintRight", "level": 1, "arkit_aligned": true, "arkit_name": "eyeSquintRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 44, "name": "mouthDimpleLeft", "level": 1, "arkit_aligned": true, "arkit_name": "mouthDimpleLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 45, "name": "mouthDimpleRight", "level": 1, "arkit_aligned": true, "arkit_name": "mouthDimpleRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 46, "name": "mouthLeft", "level": 1, "arkit_aligned": true, "arkit_name": "mouthLeft", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 47, "name": "mouthRight", "level": 1, "arkit_aligned": true, "arkit_name": "mouthRight", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 48, "name": "mouthRollLower", "level": 1, "arkit_aligned": true, "arkit_name": "mouthRollLower", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 49, "name": "mouthRollUpper", "level": 1, "arkit_aligned": true, "arkit_name": "mouthRollUpper", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 50, "name": "mouthShrugLower", "level": 1, "arkit_aligned": true, "arkit_name": "mouthShrugLower", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 51, "name": "mouthShrugUpper", "level": 1, "arkit_aligned": true, "arkit_name": "mouthShrugUpper", "metahuman_target": null, "mapping": "direct_by_name", "status": "unverified"},
+    {"facecontract_idx": 52, "name": "eyeUpperLidRaiseLeft", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "composition_alternative", "arkit_equivalent": null, "conflict_candidates": [], "status": "unverified", "recommendation": "ARKit expresses the compound effect via eyeWideLeft (idx 2: widen+raise in one curve); Premium separates lid raise from eye widen. Direct control, not redundant.", "arkit_composition": [2]},
+    {"facecontract_idx": 53, "name": "eyeUpperLidRaiseRight", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "composition_alternative", "arkit_equivalent": null, "conflict_candidates": [], "status": "unverified", "recommendation": "ARKit expresses the compound effect via eyeWideRight (idx 3: widen+raise in one curve); Premium separates lid raise from eye widen. Direct control, not redundant.", "arkit_composition": [3]},
+    {"facecontract_idx": 54, "name": "eyeLowerLidLowerLeft", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "genuine_gap", "arkit_equivalent": null, "conflict_candidates": [], "status": "unverified", "recommendation": "No ARKit equivalent: eyeSquint RAISES the lower lid; lowering is not expressible. Low priority for speech avatars.", "priority": "low"},
+    {"facecontract_idx": 55, "name": "eyeLowerLidLowerRight", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "genuine_gap", "arkit_equivalent": null, "conflict_candidates": [], "status": "unverified", "recommendation": "No ARKit equivalent: eyeSquint RAISES the lower lid; lowering is not expressible. Low priority for speech avatars.", "priority": "low"},
+    {"facecontract_idx": 56, "name": "browRaiseLeft", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "composition_alternative", "arkit_equivalent": null, "conflict_candidates": [], "status": "unverified", "recommendation": "ARKit composes browInnerUp (idx 6) + browOuterUpLeft (idx 32); Premium gives one-knob brow raise.", "arkit_composition": [6, 32]},
+    {"facecontract_idx": 57, "name": "browRaiseRight", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "composition_alternative", "arkit_equivalent": null, "conflict_candidates": [], "status": "unverified", "recommendation": "ARKit composes browInnerUp (idx 6) + browOuterUpRight (idx 33); Premium gives one-knob brow raise.", "arkit_composition": [6, 33]},
+    {"facecontract_idx": 58, "name": "noseDilationLeft", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "genuine_gap", "arkit_equivalent": null, "conflict_candidates": [], "status": "unverified", "recommendation": "No ARKit equivalent: noseSneer is a wrinkle, not nostril flare. Low priority for speech.", "priority": "low"},
+    {"facecontract_idx": 59, "name": "noseDilationRight", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "genuine_gap", "arkit_equivalent": null, "conflict_candidates": [], "status": "unverified", "recommendation": "No ARKit equivalent: noseSneer is a wrinkle, not nostril flare. Low priority for speech.", "priority": "low"},
+    {"facecontract_idx": 60, "name": "cheekSuckLeft", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "genuine_gap", "arkit_equivalent": null, "conflict_candidates": [], "status": "unverified", "recommendation": "No ARKit equivalent: cheekPuff is outward only; inward suck is not expressible. Low priority for speech.", "priority": "low"},
+    {"facecontract_idx": 61, "name": "cheekSuckRight", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "genuine_gap", "arkit_equivalent": null, "conflict_candidates": [], "status": "unverified", "recommendation": "No ARKit equivalent: cheekPuff is outward only; inward suck is not expressible. Low priority for speech.", "priority": "low"},
+    {"facecontract_idx": 62, "name": "cheekRaiserLowerLeft", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "redundant_with_arkit", "arkit_equivalent": 27, "conflict_candidates": [27], "status": "unverified", "recommendation": "clients MAY ignore; cheekSquintLeft (idx 27) provides the same effect via ARKit.", "arkit_equivalent_name": "cheekSquintLeft"},
+    {"facecontract_idx": 63, "name": "cheekRaiserLowerRight", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "redundant_with_arkit", "arkit_equivalent": 28, "conflict_candidates": [28], "status": "unverified", "recommendation": "clients MAY ignore; cheekSquintRight (idx 28) provides the same effect via ARKit.", "arkit_equivalent_name": "cheekSquintRight"},
+    {"facecontract_idx": 64, "name": "jawChinRaise", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "genuine_gap", "arkit_equivalent": null, "conflict_candidates": [], "status": "unverified", "recommendation": "No ARKit equivalent: jawForward/Left/Right/Open do not give independent chin control. High-value Premium channel."},
+    {"facecontract_idx": 65, "name": "jawChinLower", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "genuine_gap", "arkit_equivalent": null, "conflict_candidates": [], "status": "unverified", "recommendation": "No ARKit equivalent: jawForward/Left/Right/Open do not give independent chin control. High-value Premium channel."},
+    {"facecontract_idx": 66, "name": "mouthTightLeft", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "redundant_with_arkit", "arkit_equivalent": 24, "conflict_candidates": [24], "status": "unverified", "recommendation": "clients MAY ignore; mouthPressLeft (idx 24) provides the same effect via ARKit.", "arkit_equivalent_name": "mouthPressLeft"},
+    {"facecontract_idx": 67, "name": "mouthTightRight", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "redundant_with_arkit", "arkit_equivalent": 25, "conflict_candidates": [25], "status": "unverified", "recommendation": "clients MAY ignore; mouthPressRight (idx 25) provides the same effect via ARKit.", "arkit_equivalent_name": "mouthPressRight"},
+    {"facecontract_idx": 68, "name": "mouthLipsTogether", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "redundant_with_arkit", "arkit_equivalent": 23, "conflict_candidates": [23], "status": "unverified", "recommendation": "clients MAY ignore; mouthClose (idx 23) = 1.0 is the same semantic (lips pressed together).", "arkit_equivalent_name": "mouthClose"},
+    {"facecontract_idx": 69, "name": "mouthLipsPart", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "redundant_with_arkit", "arkit_equivalent": 23, "conflict_candidates": [23], "status": "unverified", "recommendation": "clients MAY ignore; mouthClose (idx 23) = 0.0 with jawOpen = 0 is the same semantic, but mouthLipsPart gives positive control without manual inversion.", "arkit_equivalent_name": "mouthClose", "wire_semantics": "Positive lip-parting control independent of jawOpen. 1.0 = lips parted at the current jaw pose. Redundant with mouthClose=0.0 at jawOpen=0, but mixes with mouthClose without manual inversion. This is a composition alternative in disguise: kept as a semantic synonym (coverage redundant_with_arkit)."},
+    {"facecontract_idx": 70, "name": "tongueRaise", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "genuine_gap", "arkit_equivalent": null, "conflict_candidates": [], "status": "unverified", "recommendation": "No ARKit equivalent: tongueOut is protrusion only. Vertical tongue control needs a rig with tongue morphs; otherwise clients MUST ignore (PROTOCOL \u00a73). See RETARGETING.md."},
+    {"facecontract_idx": 71, "name": "tongueLower", "level": 2, "arkit_aligned": false, "arkit_name": null, "metahuman_target": null, "mapping": "client_retargeting_required", "coverage": "genuine_gap", "arkit_equivalent": null, "conflict_candidates": [], "status": "unverified", "recommendation": "No ARKit equivalent: tongueOut is protrusion only. Vertical tongue control needs a rig with tongue morphs; otherwise clients MUST ignore (PROTOCOL \u00a73). See RETARGETING.md."}
+  ]
+}
