@@ -27,7 +27,9 @@ Self-test (`python facecontract_v141.py`):
   encodes 5 canonical vectors, prints their CRCs — the numbers must be
   identical across runs (determinism gate), then decodes + re-encodes each
   vector and writes facecontract_vectors.json (16-frame session scenario)
-  consumed by verify.js (independent JS decoder).
+  consumed by verify.js (independent JS decoder). It also rebuilds the §8
+  conformance streams in memory and prints their whole-blob CRC-32 — the
+  constants pinned by the CI "Golden CRC pin" step (workflow contract-lock.yml).
 """
 from __future__ import annotations
 
@@ -213,6 +215,10 @@ CORE32_CHANNEL_NAMES = [
 ]
 assert len(CORE32_CHANNEL_NAMES) == 32
 
+# Frozen Core-32 name -> index map (§3). Vector generators address channels by
+# NAME, never by raw index — a reorder must break loudly here, not silently.
+NAME_TO_INDEX = {name: idx for idx, name in enumerate(CORE32_CHANNEL_NAMES)}
+
 
 def _det_payload(n: int, seed: int) -> List[float]:
     x = seed & 0x7FFFFFFF
@@ -335,48 +341,98 @@ def build_idle_blink_frames(chunks: int = 8, fps: int = 30,
     return frames
 
 
-def write_fc14_vectors(outdir: str) -> List[Tuple[str, str, int]]:
-    """Write the PROTOCOL §8 conformance vectors as raw .fc14 streams."""
-    os.makedirs(outdir, exist_ok=True)
-    written: List[Tuple[str, str, int]] = []
+def build_speech_to_idle_frames(chunks: int = 6, fps: int = 30,
+                                chunk_size: int = 4) -> List[bytes]:
+    """speech_to_idle.fc14 source: Core-32 SPEAKING→IDLE transition stream for
+    the §7.2 client-side crossfade MUST. Chunks 0-2 FLAG_SPEAKING (jawOpen
+    articulation 0.20→0.35→0.26), chunks 3-5 FLAG_IDLE (jawOpen breathing
+    ~0.03). Sub-frame 11→12 raw jawOpen delta = 0.23 — a visible snap that
+    CrossfadeFilter must compress below 0.15 per rendered frame over the
+    200 ms blend (verify_behavior.mjs Test 7)."""
+    n = chunks * chunk_size  # 24 sub-frames
+    rows: List[List[float]] = []
+    for i in range(n):
+        row = [0.0] * 32
+        if i < 8:
+            # chunks 0-1: strong articulation
+            row[NAME_TO_INDEX["jawOpen"]] = 0.20 + 0.10 * math.sin(2 * math.pi * i / 4)
+            row[NAME_TO_INDEX["mouthUpperUpLeft"]] = 0.15
+            row[NAME_TO_INDEX["mouthUpperUpRight"]] = 0.15
+            row[NAME_TO_INDEX["mouthLowerDownLeft"]] = 0.10
+            row[NAME_TO_INDEX["mouthLowerDownRight"]] = 0.10
+        elif i < 12:
+            # chunk 2: articulation tail (0.35 → 0.26)
+            row[NAME_TO_INDEX["jawOpen"]] = 0.35 - 0.03 * (i - 8)
+            row[NAME_TO_INDEX["mouthUpperUpLeft"]] = 0.10
+            row[NAME_TO_INDEX["mouthUpperUpRight"]] = 0.10
+        else:
+            # chunks 3-5: idle breathing
+            phase = 2 * math.pi * (i - 12) / 9
+            row[NAME_TO_INDEX["jawOpen"]] = 0.03 + 0.01 * math.sin(phase)
+            row[NAME_TO_INDEX["mouthClose"]] = 0.85 - 0.02 * math.sin(phase)
+        rows.append(row)
+    frames: List[bytes] = []
+    for c in range(chunks):
+        payload = [v for f in range(chunk_size)
+                   for v in rows[c * chunk_size + f]]  # row-major [frame][bs]
+        flags = FLAG_SPEAKING if c < 3 else FLAG_IDLE
+        frames.append(encode(
+            seq=c, t_ns=7_000_000_000 + c * (chunk_size * 1_000_000_000 // fps),
+            dur_us=(chunk_size * 1_000_000_000 // fps) // 1000,
+            fps=fps, chunk_size=chunk_size, payload=payload, flags=flags))
+    return frames
 
-    def write(name: str, frames: List[bytes]) -> None:
-        path = os.path.join(outdir, name)
-        with open(path, "wb") as fh:
-            fh.write(b"".join(frames))
-        written.append((name, path, sum(len(f) for f in frames)))
 
+def build_fc14_streams() -> List[Tuple[str, bytes]]:
+    """Build all §8 conformance streams in memory — the single source of truth
+    for both the --vectors writer and the self-test CRC printout (the CI
+    "Golden CRC pin" step locks these whole-blob CRC-32 constants).
+
+    head_pose_premium.fc14 is NOT built: FLAG_HEAD_POSE (bit 2) is reserved
+    for v1.5; v1.4.1 encode() rejects head_pose by design.
+    """
     dur_us = 133333          # 4 frames @ 30 fps, advisory floor
     dur_ns = 133333333
 
     # silence.fc14 — minimal valid idle frame, Core-32
     silence = encode(seq=0, t_ns=0, dur_us=dur_us, fps=30, chunk_size=4,
                      payload=[0.001] * 128, flags=FLAG_IDLE)  # bs_count=32
-    write("silence.fc14", [silence])
-
-    # speech_ru_01.fc14 — 3-frame utterance, Extended-52
-    write("speech_ru_01.fc14", [
-        encode(seq=i, t_ns=i * dur_ns, dur_us=dur_us, fps=30, chunk_size=4,
-               payload=_det_payload(208, i + 11), flags=FLAG_SPEAKING)
-        for i in range(3)])
-
-    # gap_sequence.fc14 — seq 0, 1, 3 (simulated loss), Extended-52.
-    # Wire level: still valid frames; gap handling is a CLIENT policy (§6.2).
-    write("gap_sequence.fc14", [
-        encode(seq=s, t_ns=s * dur_ns, dur_us=dur_us, fps=30, chunk_size=4,
-               payload=_det_payload(208, s + 21), flags=FLAG_SPEAKING)
-        for s in (0, 1, 3)])
-
-    # idle_breathing_blink.fc14 — 8 chunks Core-32, breathing + blink
-    write("idle_breathing_blink.fc14", build_idle_blink_frames())
 
     # corrupted_crc.fc14 — silence with one flipped payload byte (negative)
     bad = bytearray(silence)
     bad[40] ^= 0xFF  # inside the payload
-    write("corrupted_crc.fc14", [bytes(bad)])
 
-    # head_pose_premium.fc14 is NOT generated: FLAG_HEAD_POSE (bit 2) is
-    # reserved for v1.5; v1.4.1 encode() rejects head_pose by design.
+    return [
+        ("silence.fc14", silence),
+        # 3-frame utterance, Extended-52
+        ("speech_ru_01.fc14", b"".join(
+            encode(seq=i, t_ns=i * dur_ns, dur_us=dur_us, fps=30, chunk_size=4,
+                   payload=_det_payload(208, i + 11), flags=FLAG_SPEAKING)
+            for i in range(3))),
+        # seq 0, 1, 3 (simulated loss), Extended-52. Wire level: still valid
+        # frames; gap handling is a CLIENT policy (§6.2).
+        ("gap_sequence.fc14", b"".join(
+            encode(seq=s, t_ns=s * dur_ns, dur_us=dur_us, fps=30, chunk_size=4,
+                   payload=_det_payload(208, s + 21), flags=FLAG_SPEAKING)
+            for s in (0, 1, 3))),
+        # 8 chunks Core-32, breathing + blink
+        ("idle_breathing_blink.fc14", b"".join(build_idle_blink_frames())),
+        # 6 chunks Core-32, SPEAKING→IDLE transition for the §7.2 crossfade
+        ("speech_to_idle.fc14", b"".join(build_speech_to_idle_frames())),
+        # negative: must be rejected by decode()
+        ("corrupted_crc.fc14", bytes(bad)),
+    ]
+
+
+def write_fc14_vectors(outdir: str) -> List[Tuple[str, str, int]]:
+    """Write the PROTOCOL §8 conformance vectors as raw .fc14 streams."""
+    os.makedirs(outdir, exist_ok=True)
+    written: List[Tuple[str, str, int]] = []
+    for name, blob in build_fc14_streams():
+        path = os.path.join(outdir, name)
+        with open(path, "wb") as fh:
+            fh.write(blob)
+        written.append((name, path, len(blob)))
     return written
 
 
@@ -398,10 +454,43 @@ def _self_test() -> int:
         crc = frame_crc(frame)
         print(f"  {name:<15} crc=0x{crc:08X}  decode=OK  "
               f"re-encode={'OK' if ok else 'FAIL'}  residue={'OK' if residue_ok else 'FAIL'}")
+    # §8 conformance streams: rebuild in memory, validate structurally, and
+    # print the whole-blob CRC-32 of each stream. The CI "Golden CRC pin" step
+    # greps these lines against its pinned constants — any encoder drift
+    # changes them even if the .b64 vectors are regenerated to match.
+    n_streams = 0
+    for name, blob in build_fc14_streams():
+        n_streams += 1
+        crc = zlib.crc32(blob) & 0xFFFFFFFF
+        n_frames = 0
+        off = 0
+        ok = True
+        note = ""
+        while off < len(blob):
+            (payload_len,) = struct.unpack_from("<I", blob, off + 20)
+            frame = blob[off:off + _FRAME_OVERHEAD + payload_len]
+            n_frames += 1
+            try:
+                if name == "corrupted_crc.fc14":
+                    decode(frame)          # negative vector: MUST be rejected
+                    ok, note = False, "decode accepted a corrupt frame"
+                else:
+                    decode(frame)
+            except FaceContractError as exc:
+                if name != "corrupted_crc.fc14":
+                    ok, note = False, str(exc)
+            off += _FRAME_OVERHEAD + payload_len
+        if off != len(blob):
+            ok, note = False, "trailing bytes"
+        all_ok = all_ok and ok
+        print(f"  {name:<28} crc=0x{crc:08X}  frames={n_frames}  "
+              f"bytes={len(blob)}  {'OK' if ok else 'FAIL (' + note + ')'}")
+
     dump_vectors(vectors_path)
     print(f"  vectors: {os.path.basename(vectors_path)} "
           f"({len(build_session_frames())} frames, session scenario)")
-    print("5/5 canonical vectors OK" if all_ok else "SELF-TEST FAILED")
+    print(f"5/5 canonical vectors + {n_streams}/{n_streams} conformance streams OK"
+          if all_ok else "SELF-TEST FAILED")
     return 0 if all_ok else 1
 
 
