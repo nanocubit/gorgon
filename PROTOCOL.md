@@ -86,6 +86,52 @@ for frame ∈ [0, chunk_size).
 A client MUST ignore channels absent from its morph target dictionary — a
 Level-2 stream on a Level-1 rig produces partial animation, not an error.
 
+### 3.1 Why 20, not 16 or 200 (added 2026-11-27; advisory clarification,
+patch class per §10 — zero wire bytes, normative content of §1–§6 unchanged)
+
+20 is a product decision, not a derivation from MetaHuman. The set covers
+seven facial categories (eyelids, brows, nose, cheeks, chin, lips, tongue)
+with 1–2 channels each. It is not claimed to be minimal, exhaustive, or
+optimal: 15 would have covered the same categories without the redundant
+synonyms, and 25 could add browWrinkle/noseTwist. Redundant channels are
+kept as semantic conveniences and are revocable in a future minor version
+via `deprecated: true` in `channels.json` — but are not removed now (lock).
+Per-channel classification (exact per-channel fields in `channels.json`):
+
+- **10 genuine gaps** — ARKit 52 cannot express these at all:
+  `jawChinRaise`, `jawChinLower`, `tongueRaise`, `tongueLower`
+  (speech-relevant), plus lower-priority for a speech avatar:
+  `eyeLowerLidLower*`, `noseDilation*`, `cheekSuck*`.
+- **4 composition alternatives** — ARKit expresses the effect, but only as
+  a compound or via multi-channel composition; Premium provides direct
+  control: `eyeUpperLidRaise*` (vs `eyeWide*` = widen+raise as one curve),
+  `browRaise*` (vs `browInnerUp` + `browOuterUp*`).
+- **6 redundant with Level 1** — an ARKit equivalent already exists:
+  `cheekRaiserLower*` (≡ `cheekSquint*`), `mouthTight*` (≡ `mouthPress*`),
+  `mouthLipsTogether` (≡ `mouthClose` = 1.0), `mouthLipsPart` (≡
+  `mouthClose` = 0.0 at `jawOpen` = 0). Clients MAY ignore them without
+  losing expressiveness; they are kept as semantic synonyms.
+
+A Level-2 stream puts 72 channels on the wire — that is a wire-format fact,
+not an effective-output claim: a client MAY consume only the 52 Level-1
+channels. Wire order and indices remain frozen regardless of category.
+
+### 3.2 What FaceContract is NOT
+
+- Not "MetaHuman-compatible by name" — rig mapping is client-side
+  retargeting (RETARGETING.md); `metahuman_target` is null everywhere in
+  `channels.json` by decision.
+- Not a superset of NVIDIA Audio2Face-3D — NVIDIA is narrow and deep:
+  per NVIDIA docs, 16 tongue curves + 5 rig-specific tuning curves on top
+  of ARKit 52 (68 effective outputs with tongue enabled, 52 without).
+  FaceContract is broad and shallow: 20 Premium channels across seven
+  categories, 1–2 per category, with no rig-specific tuning. This is a
+  different trade-off, not universality. Clients needing deep tongue
+  animation should use NVIDIA ACE, not FaceContract Level 2.
+- Not a superset of any specific rig's control surface. Per Epic MetaHuman
+  docs, MetaHuman ships 18 tongue-related Control Curves — more than this
+  contract exposes (cited, not counted by us; see RETARGETING.md §4).
+
 ---
 
 ## 4. Timing semantics — **`t_ns` is ground truth**
@@ -257,7 +303,9 @@ first idle frame — at `progress=0` the filter renders `_from` verbatim, so
 capturing the first idle frame would let the raw snap pass through untouched
 and blend idle into idle. This is pinned by Test 7 (below).
 
-**Test coverage:** `verify_behavior.mjs` Test 7. Test vector:
+**Test coverage:** `verify_behavior.mjs` Test 7 (transition gate) and
+Test 8 (abort-on-resume: `isSpeaking=true` mid-blend must return the raw
+frame, `_startMs = null`, no mixing toward idle). Test vector:
 `speech_to_idle.fc14` (6 chunks, frame 11→12 transition with raw
 jawOpen delta 0.23; crossfaded max per-frame delta 0.0441 < 0.15,
 blend active exactly 6 frames @ 30 fps, idle tail mean 0.0300 —
@@ -335,4 +383,7 @@ hold-last tail is authoritative. Chunks queued BEFORE hangover still drain.
 | New supported bs_count level (superset)        | patch, no wire  |
 
 Current: **spec 1.4.1 / wire 0x01 0x04**. v1.4.2 is reserved for empirical OEF
-tuning and `channels.json`; no wire change expected.
+tuning, `channels.json`, the §3.1/§3.2 coverage classification and
+RETARGETING.md (advisory docs, patch class); no wire change expected.
+head_pose is a v1.5 change (new flag bit + new block = minor + wire bump
+per this table), never a patch.
