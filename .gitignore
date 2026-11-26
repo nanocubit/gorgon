@@ -1,0 +1,7 @@
+# .fc14 files are generated (decode-on-clone or `python facecontract_v141.py --vectors`).
+# The committed .b64 files are the source of truth.
+test_vectors/*.fc14
+__pycache__/
+*.pyc
+.venv/
+node_modules/
