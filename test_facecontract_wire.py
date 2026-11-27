@@ -17,10 +17,20 @@ Covers the invariants the SM tests do not touch:
 
 Run: python -m unittest test_facecontract_wire -v
 """
+import struct
 import unittest
 import zlib
 
 import facecontract_v141 as fc
+
+
+def reflag(frame: bytes, flags: int) -> bytes:
+    """Return a copy of a valid frame with the flags byte (offset 6) replaced
+    and the CRC recomputed over the patched body — so decode() reaches its
+    flag-semantics checks instead of dying on a CRC mismatch first."""
+    body = bytearray(frame[:-4])
+    body[6] = flags
+    return bytes(body) + struct.pack("<I", zlib.crc32(bytes(body)) & 0xFFFFFFFF)
 
 
 def be_residue(body: bytes) -> int:
@@ -96,6 +106,32 @@ class TestEncodeValidation(unittest.TestCase):
             fc.encode(seq=0, t_ns=0, dur_us=133333, fps=30, chunk_size=4,
                       payload=[0.0] * 16, flags=fc.FLAG_IDLE,
                       head_pose=(0.1, 0.2))
+
+
+class TestDecodeFlagSemantics(unittest.TestCase):
+    """decode()-side I3 enforcement.
+
+    Origin: mutation matrix run #1 (P1, 2026-11-27) — mutant W09 (decode
+    one-hot check disabled) SURVIVED the whole suite: the encode-side check
+    was tested, the decode-side check was not. These tests kill it: a
+    hand-crafted frame with corrupt flags (CRC fixed up so the flags branch
+    is reached) must be rejected with the specific I3 error."""
+
+    def setUp(self) -> None:
+        self.frame = fc.canonical_vectors()[0][1]  # minimal_idle
+
+    def test_decode_rejects_both_flags_set(self):
+        with self.assertRaisesRegex(fc.FaceContractError, "I3 violation"):
+            fc.decode(reflag(self.frame, fc.FLAG_IDLE | fc.FLAG_SPEAKING))
+
+    def test_decode_rejects_no_flags(self):
+        with self.assertRaisesRegex(fc.FaceContractError, "I3 violation"):
+            fc.decode(reflag(self.frame, 0))
+
+    def test_decode_rejects_unknown_flag_bit(self):
+        # bit 2 = FLAG_HEAD_POSE, reserved for v1.5 — unknown to v1.4.1
+        with self.assertRaisesRegex(fc.FaceContractError, "unknown flag bits"):
+            fc.decode(reflag(self.frame, 0x04))
 
 
 class TestBigEndianCrcDiagnostic(unittest.TestCase):
