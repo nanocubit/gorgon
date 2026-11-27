@@ -196,9 +196,7 @@ def decode(frame: bytes) -> Dict[str, Any]:
 
 # ── deterministic test vectors ────────────────────────────────────────────────
 
-# Core-32 channel order — FROZEN (PROTOCOL §3). Index map used by the
-# idle_breathing_blink vector: eyeBlinkLeft=0, eyeBlinkRight=1,
-# browInnerUp=6, jawOpen=10, mouthClose=23.
+# Core-32 channel order — FROZEN (PROTOCOL §3).
 CORE32_CHANNEL_NAMES = [
     "eyeBlinkLeft", "eyeBlinkRight", "eyeWideLeft", "eyeWideRight",
     "browDownLeft", "browDownRight", "browInnerUp",
@@ -215,8 +213,11 @@ CORE32_CHANNEL_NAMES = [
 ]
 assert len(CORE32_CHANNEL_NAMES) == 32
 
-# Frozen Core-32 name -> index map (§3). Vector generators address channels by
-# NAME, never by raw index — a reorder must break loudly here, not silently.
+# Frozen Core-32 name -> index map (§3). ALL vector generators address channels
+# by NAME through this map, never by raw index — a reorder must break loudly
+# here, not silently. (P0 2026-11-27: build_idle_blink_frames wrote raw
+# row[0]/row[1]/row[6]/row[10]/row[23], which made a NAMES swap invisible to
+# the whole executed suite; enforced by test_retargeting_smoke.py T9.)
 NAME_TO_INDEX = {name: idx for idx, name in enumerate(CORE32_CHANNEL_NAMES)}
 
 
@@ -315,20 +316,26 @@ def build_idle_blink_frames(chunks: int = 8, fps: int = 30,
     """idle_breathing_blink.fc14 source: Core-32 idle stream with breathing on
     jawOpen and one blink on eyeBlinkLeft/Right. Raw signal is designed so the
     §7.1 OEF profiles must reproduce: blink peak >= 0.85, jawOpen filtered
-    inside [0.005, 0.06] with visible range, blink decay < 0.05 in 300 ms."""
+    inside [0.005, 0.06] with visible range, blink decay < 0.05 in 300 ms.
+
+    Channels are addressed by NAME via NAME_TO_INDEX, never by raw index
+    (P0 2026-11-27; sensitivity pinned by test_retargeting_smoke.py T9)."""
     n = chunks * chunk_size  # 32 sub-frames
+    # blink envelope keyed by SUB-FRAME time index (not channel index)
     blink_raw = {13: 0.4, 14: 0.9, 15: 1.0, 16: 1.0,
                  17: 0.5, 18: 0.15, 19: 0.05, 20: 0.02}
     rows: List[List[float]] = []
     for i in range(n):
         row = [0.001] * 32
         blink = blink_raw.get(i, 0.001)
-        row[0] = blink                                            # eyeBlinkLeft
-        row[1] = blink                                            # eyeBlinkRight
-        row[6] = 0.005 + 0.002 * math.sin(2 * math.pi * i / 16)   # browInnerUp
-        row[10] = 0.032 + 0.026 * math.sin(                       # jawOpen
+        row[NAME_TO_INDEX["eyeBlinkLeft"]] = blink
+        row[NAME_TO_INDEX["eyeBlinkRight"]] = blink
+        row[NAME_TO_INDEX["browInnerUp"]] = (
+            0.005 + 0.002 * math.sin(2 * math.pi * i / 16))
+        row[NAME_TO_INDEX["jawOpen"]] = 0.032 + 0.026 * math.sin(
             2 * math.pi * i / 32 - math.pi / 2)
-        row[23] = 0.010 + 0.004 * math.sin(2 * math.pi * i / 32)  # mouthClose
+        row[NAME_TO_INDEX["mouthClose"]] = (
+            0.010 + 0.004 * math.sin(2 * math.pi * i / 32))
         rows.append(row)
     frames: List[bytes] = []
     for c in range(chunks):

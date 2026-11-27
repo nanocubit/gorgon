@@ -23,6 +23,10 @@ suite:
                                           mouthLipsPart declare wire semantics
   T7  test_metahuman_target_null_everywhere  decision (a)
   T8  test_counts_and_contiguity          32/20/20, indices 0..71, coverage counts
+  T9  test_generator_signal_follows_name_map  swap-sensitivity: BOTH .fc14
+                                          generators consume NAME_TO_INDEX
+                                          (closes the raw-index blind spot in
+                                          build_idle_blink_frames, P0 2026-11-27)
 
 Run: python -m unittest test_retargeting_smoke -v
 """
@@ -30,6 +34,7 @@ import base64
 import json
 import pathlib
 import unittest
+from unittest import mock
 
 import facecontract_v141 as fc
 
@@ -188,6 +193,62 @@ class ChannelGuardTests(unittest.TestCase):
              "composition_alternative": 4, "redundant_with_arkit": 6})
         self.assertTrue(self.doc["metahuman_policy"].startswith(
             "metahuman_target is null everywhere"))
+
+    # ── T9 (swap-sensitivity, P0 2026-11-27) ────────────────────────────
+    def test_generator_signal_follows_name_map(self):
+        """Negative mutation test closing the item-6 blind spot at its root.
+
+        Historical finding (2026-11-27): build_idle_blink_frames wrote raw
+        indices (row[0]/row[1]/row[6]/row[10]/row[23]), so NO executed test
+        failed when CORE32_CHANNEL_NAMES was reordered — the whole 40-test
+        suite stayed green while the wire semantics silently broke. The
+        invariant pinned here: the value written for a NAME must land at
+        NAME_TO_INDEX[NAME] — i.e. the signal FOLLOWS the map.
+
+        Method: swap jawOpen <-> mouthClose (a pair with DISTINCT signals;
+        eyeBlink* carries identical L/R values and cannot discriminate a
+        swap) in the module map, regenerate both streams, and assert
+        (a) the bytes diverge and (b) each signal moved to the swapped
+        position. A raw-index regression fails (a) immediately."""
+        with mock.patch.dict(fc.NAME_TO_INDEX,
+                             {"jawOpen": 23, "mouthClose": 10}):
+            idle_mut_frames = fc.build_idle_blink_frames()
+            speech_mut_frames = fc.build_speech_to_idle_frames()
+        idle_ref_frames = fc.build_idle_blink_frames()
+        speech_ref_frames = fc.build_speech_to_idle_frames()
+        idle_mut = b"".join(idle_mut_frames)
+        speech_mut = b"".join(speech_mut_frames)
+        idle_ref = b"".join(idle_ref_frames)
+        speech_ref = b"".join(speech_ref_frames)
+
+        # (a) bytes diverge — the generators are map-dependent
+        self.assertNotEqual(
+            idle_ref, idle_mut,
+            "idle_breathing_blink generator ignores NAME_TO_INDEX "
+            "(raw-index writes are back)")
+        self.assertNotEqual(
+            speech_ref, speech_mut,
+            "speech_to_idle generator ignores NAME_TO_INDEX")
+
+        # (b) the signal really moved to the swapped position.
+        # Idle sub-frame 0: jawOpen = 0.032 + 0.026*sin(-pi/2) = 0.006,
+        # mouthClose = 0.010 + 0.004*sin(0) = 0.010.
+        pl_ref = fc.decode(idle_ref_frames[0])["payload"]
+        pl_mut = fc.decode(idle_mut_frames[0])["payload"]
+        self.assertAlmostEqual(pl_ref[10], 0.006, places=6)
+        self.assertAlmostEqual(pl_ref[23], 0.010, places=6)
+        self.assertAlmostEqual(pl_mut[10], 0.010, places=6,
+                               msg="mouthClose signal did not follow the map")
+        self.assertAlmostEqual(pl_mut[23], 0.006, places=6,
+                               msg="jawOpen signal did not follow the map")
+
+        # Speech sub-frame 0: jawOpen = 0.20, mouthClose unset (0.0).
+        sp_ref = fc.decode(speech_ref_frames[0])["payload"]
+        sp_mut = fc.decode(speech_mut_frames[0])["payload"]
+        self.assertAlmostEqual(sp_ref[10], 0.20, places=6)
+        self.assertAlmostEqual(sp_mut[23], 0.20, places=6,
+                               msg="speech jawOpen signal did not follow the map")
+        self.assertAlmostEqual(sp_mut[10], 0.0, places=6)
 
 
 if __name__ == "__main__":
