@@ -1,0 +1,860 @@
+{
+  "generated": "2026-11-27 14:54:49 UTC",
+  "baseline": {
+    "WIRE": true,
+    "GLUE": true,
+    "EDGE": true,
+    "RETGT": true,
+    "VJS": true,
+    "BEH": true
+  },
+  "executors": [
+    "WIRE",
+    "GLUE",
+    "EDGE",
+    "RETGT",
+    "VJS",
+    "BEH"
+  ],
+  "mutation_score": 0.9744,
+  "killed": 38,
+  "total": 39,
+  "rows": [
+    {
+      "id": "W01",
+      "category": "W",
+      "target": "facecontract_v141.py",
+      "description": "MAGIC b\"GRG1\" → b\"GRG2\" (encode writes, decode rejects)",
+      "status": "killed",
+      "killers": [
+        "RETGT",
+        "WIRE"
+      ],
+      "killing_tests": {
+        "WIRE": [
+          "test_be_residue_is_message_dependent"
+        ],
+        "RETGT": [
+          "<suite-level failure>"
+        ]
+      },
+      "predicted": [
+        "RETGT",
+        "VJS",
+        "WIRE"
+      ],
+      "prediction_match": false
+    },
+    {
+      "id": "W02",
+      "category": "W",
+      "target": "facecontract_v141.py",
+      "description": "VERSION_MINOR 4 → 5",
+      "status": "killed",
+      "killers": [
+        "RETGT",
+        "WIRE"
+      ],
+      "killing_tests": {
+        "WIRE": [
+          "test_be_residue_is_message_dependent"
+        ],
+        "RETGT": [
+          "<suite-level failure>"
+        ]
+      },
+      "predicted": [
+        "RETGT",
+        "VJS",
+        "WIRE"
+      ],
+      "prediction_match": false
+    },
+    {
+      "id": "W03",
+      "category": "W",
+      "target": "facecontract_v141.py",
+      "description": "FLAG_IDLE 0x01 → 0x04 (bit-2 collision with reserved head_pose bit)",
+      "status": "killed",
+      "killers": [
+        "RETGT",
+        "WIRE"
+      ],
+      "killing_tests": {
+        "WIRE": [
+          "test_decode_rejects_unknown_flag_bit"
+        ],
+        "RETGT": [
+          "<suite-level failure>"
+        ]
+      },
+      "predicted": [
+        "VJS"
+      ],
+      "prediction_match": false
+    },
+    {
+      "id": "W04",
+      "category": "W",
+      "target": "facecontract_v141.py",
+      "description": "CRC_RESIDUE 0x2144DF1C → 0xDEADBEEF",
+      "status": "killed",
+      "killers": [
+        "WIRE"
+      ],
+      "killing_tests": {
+        "WIRE": [
+          "test_all_canonical_vectors",
+          "test_all_session_frames"
+        ]
+      },
+      "predicted": [
+        "WIRE"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "W05",
+      "category": "W",
+      "target": "facecontract_v141.py",
+      "description": "encode CRC-32 → adler32 (wrong checksum algorithm)",
+      "status": "killed",
+      "killers": [
+        "EDGE",
+        "GLUE",
+        "RETGT",
+        "WIRE"
+      ],
+      "killing_tests": {
+        "WIRE": [
+          "test_frame_length_formula",
+          "test_all_canonical_vectors",
+          "test_all_session_frames"
+        ],
+        "GLUE": [
+          "test_01_pure_idle_session",
+          "test_02_full_utterance_hold_last_tail",
+          "test_03_backpressure_drops_idle_only_i7",
+          "test_05_stale_model_chunk_discarded_in_idle",
+          "test_07_streaming_empty_queue_falls_back_to_idle",
+          "test_11_bs_count_must_be_supported"
+        ],
+        "EDGE": [
+          "test_glue_chunk_after_done_does_not_resurrect_tail",
+          "test_reconnect_end_to_end_fresh_epoch",
+          "test_glue_drain_then_tail"
+        ],
+        "RETGT": [
+          "<suite-level failure>"
+        ]
+      },
+      "predicted": [
+        "RETGT",
+        "VJS",
+        "WIRE"
+      ],
+      "prediction_match": false
+    },
+    {
+      "id": "W06",
+      "category": "W",
+      "target": "facecontract_v141.py",
+      "description": "decode(): CRC mismatch check disabled (accept corrupt frames)",
+      "status": "killed",
+      "killers": [
+        "WIRE"
+      ],
+      "killing_tests": {
+        "WIRE": [
+          "test_crc_corruption_rejected"
+        ]
+      },
+      "predicted": [
+        "WIRE"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "W07",
+      "category": "W",
+      "target": "facecontract_v141.py",
+      "description": "decode(): payload_len field check disabled (defence-in-depth gone)",
+      "status": "killed",
+      "killers": [
+        "WIRE"
+      ],
+      "killing_tests": {
+        "WIRE": [
+          "test_corrupted_payload_len_even_with_broken_crc",
+          "test_corrupted_payload_len_field_rejected_specifically",
+          "test_truncated_frame_rejected"
+        ]
+      },
+      "predicted": [
+        "WIRE"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "W08",
+      "category": "W",
+      "target": "facecontract_v141.py",
+      "description": "SUPPORTED_BS_COUNTS drops 52 (Extended level unshippable)",
+      "status": "killed",
+      "killers": [
+        "RETGT"
+      ],
+      "killing_tests": {
+        "RETGT": [
+          "<suite-level failure>"
+        ]
+      },
+      "predicted": [
+        "RETGT"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "W09",
+      "category": "W",
+      "target": "facecontract_v141.py",
+      "description": "decode(): one-hot I3 check disabled (encode-side kept)",
+      "status": "killed",
+      "killers": [
+        "WIRE"
+      ],
+      "killing_tests": {
+        "WIRE": [
+          "test_decode_rejects_both_flags_set",
+          "test_decode_rejects_no_flags"
+        ]
+      },
+      "predicted": [],
+      "prediction_match": false
+    },
+    {
+      "id": "N01",
+      "category": "N",
+      "target": "facecontract_v141.py",
+      "description": "CORE32: eyeBlinkLeft ↔ eyeBlinkRight (the historical blind spot)",
+      "status": "killed",
+      "killers": [
+        "RETGT"
+      ],
+      "killing_tests": {
+        "RETGT": [
+          "test_channels_json_matches_canon"
+        ]
+      },
+      "predicted": [
+        "RETGT"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "N02",
+      "category": "N",
+      "target": "facecontract_v141.py",
+      "description": "CORE32: jawOpen ↔ mouthClose (distinct-signal pair)",
+      "status": "killed",
+      "killers": [
+        "RETGT"
+      ],
+      "killing_tests": {
+        "RETGT": [
+          "test_channels_json_matches_canon"
+        ]
+      },
+      "predicted": [
+        "RETGT"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "N03",
+      "category": "N",
+      "target": "facecontract_v141.py",
+      "description": "CORE32: mouthPressLeft ↔ mouthPressRight (the P0-A probe pair)",
+      "status": "killed",
+      "killers": [
+        "RETGT"
+      ],
+      "killing_tests": {
+        "RETGT": [
+          "test_channels_json_matches_canon"
+        ]
+      },
+      "predicted": [
+        "RETGT"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "N04",
+      "category": "N",
+      "target": "facecontract_v141.py",
+      "description": "CORE32: tongueOut renamed tongueOutV2",
+      "status": "killed",
+      "killers": [
+        "RETGT"
+      ],
+      "killing_tests": {
+        "RETGT": [
+          "test_channels_json_matches_canon"
+        ]
+      },
+      "predicted": [
+        "RETGT"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "N05",
+      "category": "N",
+      "target": "channels.json",
+      "description": "Premium block: channels 52 ↔ 53 swapped (whole entries)",
+      "status": "killed",
+      "killers": [
+        "RETGT"
+      ],
+      "killing_tests": {
+        "RETGT": [
+          "test_channels_json_matches_canon",
+          "test_counts_and_contiguity"
+        ]
+      },
+      "predicted": [
+        "RETGT"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "N06",
+      "category": "N",
+      "target": "channels.json",
+      "description": "genuine_gap channel gets an arkit_equivalent (contract break)",
+      "status": "killed",
+      "killers": [
+        "RETGT"
+      ],
+      "killing_tests": {
+        "RETGT": [
+          "<suite-level failure>"
+        ]
+      },
+      "predicted": [
+        "RETGT"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "N07",
+      "category": "N",
+      "target": "channels.json",
+      "description": "redundant channel's arkit_equivalent_name points at the wrong name",
+      "status": "killed",
+      "killers": [
+        "RETGT"
+      ],
+      "killing_tests": {
+        "RETGT": [
+          "test_arkit_equivalent_crossrefs"
+        ]
+      },
+      "predicted": [
+        "RETGT"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "N08",
+      "category": "N",
+      "target": "channels.json",
+      "description": "metahuman_target set non-null (decision (a) reversed)",
+      "status": "killed",
+      "killers": [
+        "RETGT"
+      ],
+      "killing_tests": {
+        "RETGT": [
+          "test_metahuman_target_null_everywhere"
+        ]
+      },
+      "predicted": [
+        "RETGT"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "N09",
+      "category": "N",
+      "target": "channels.json",
+      "description": "premium_coverage_counts genuine_gap 10 → 9 (count drift)",
+      "status": "killed",
+      "killers": [
+        "RETGT"
+      ],
+      "killing_tests": {
+        "RETGT": [
+          "test_counts_and_contiguity"
+        ]
+      },
+      "predicted": [
+        "RETGT"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "N10",
+      "category": "N",
+      "target": "channels.json",
+      "description": "mouthClose wire_semantics cleared (undocumented channel)",
+      "status": "killed",
+      "killers": [
+        "RETGT"
+      ],
+      "killing_tests": {
+        "RETGT": [
+          "test_wire_semantics_are_declared"
+        ]
+      },
+      "predicted": [
+        "RETGT"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "G01",
+      "category": "G",
+      "target": "facecontract_v141.py",
+      "description": "idle blink peak 1.0 → 0.5 (breaks §7.1 OEF: peak >= 0.85)",
+      "status": "killed",
+      "killers": [
+        "RETGT"
+      ],
+      "killing_tests": {
+        "RETGT": [
+          "<suite-level failure>"
+        ]
+      },
+      "predicted": [
+        "RETGT"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "G02",
+      "category": "G",
+      "target": "facecontract_v141.py",
+      "description": "idle jawOpen breathing amplitude 0.026 → 0.006 (range collapses)",
+      "status": "killed",
+      "killers": [
+        "RETGT"
+      ],
+      "killing_tests": {
+        "RETGT": [
+          "<suite-level failure>"
+        ]
+      },
+      "predicted": [
+        "RETGT"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "G03",
+      "category": "G",
+      "target": "facecontract_v141.py",
+      "description": "speech_to_idle: chunk 2 flags SPEAKING → IDLE (transition moved)",
+      "status": "killed",
+      "killers": [
+        "RETGT"
+      ],
+      "killing_tests": {
+        "RETGT": [
+          "<suite-level failure>"
+        ]
+      },
+      "predicted": [
+        "RETGT"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "G04",
+      "category": "G",
+      "target": "facecontract_v141.py",
+      "description": "RAW-INDEX REGRESSION (historical bug): eyeBlink* written as row[0]/row[1]",
+      "status": "killed",
+      "killers": [
+        "RETGT"
+      ],
+      "killing_tests": {
+        "RETGT": [
+          "<suite-level failure>"
+        ]
+      },
+      "predicted": [
+        "RETGT"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "G05",
+      "category": "G",
+      "target": "facecontract_v141.py",
+      "description": "idle mouthClose signal zeroed (channel silently dropped)",
+      "status": "killed",
+      "killers": [
+        "RETGT"
+      ],
+      "killing_tests": {
+        "RETGT": [
+          "<suite-level failure>"
+        ]
+      },
+      "predicted": [
+        "RETGT"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "G06",
+      "category": "G",
+      "target": "facecontract_v141.py",
+      "description": "speech articulation 0.20→0.02 (§7.2 crossfade snap disappears)",
+      "status": "killed",
+      "killers": [
+        "RETGT"
+      ],
+      "killing_tests": {
+        "RETGT": [
+          "<suite-level failure>"
+        ]
+      },
+      "predicted": [
+        "BEH",
+        "RETGT"
+      ],
+      "prediction_match": false
+    },
+    {
+      "id": "G07",
+      "category": "G",
+      "target": "facecontract_v141.py",
+      "description": "RAW-INDEX REGRESSION: browInnerUp written as row[6] (validate T9 v2 breadth)",
+      "status": "killed",
+      "killers": [
+        "RETGT"
+      ],
+      "killing_tests": {
+        "RETGT": [
+          "<suite-level failure>"
+        ]
+      },
+      "predicted": [
+        "RETGT"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "G08",
+      "category": "G",
+      "target": "facecontract_v141.py",
+      "description": "RAW-INDEX REGRESSION: speech mouthUpperUpLeft written as row[21] (T9 v2 breadth)",
+      "status": "killed",
+      "killers": [
+        "RETGT"
+      ],
+      "killing_tests": {
+        "RETGT": [
+          "<suite-level failure>"
+        ]
+      },
+      "predicted": [
+        "RETGT"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "S01",
+      "category": "S",
+      "target": "gorgon_state.py",
+      "description": "commit() freezes seq (I1 broken: no strict +1)",
+      "status": "killed",
+      "killers": [
+        "EDGE",
+        "GLUE"
+      ],
+      "killing_tests": {
+        "GLUE": [
+          "test_01_pure_idle_session",
+          "test_02_full_utterance_hold_last_tail",
+          "test_03_backpressure_drops_idle_only_i7",
+          "test_05_stale_model_chunk_discarded_in_idle",
+          "test_07_streaming_empty_queue_falls_back_to_idle",
+          "test_10_session_peek_commit_unit",
+          "test_12_metrics_use_public_session_api"
+        ],
+        "EDGE": [
+          "test_glue_chunk_after_done_does_not_resurrect_tail",
+          "test_new_session_seq_zero_fresh_epoch",
+          "test_reconnect_end_to_end_fresh_epoch",
+          "test_glue_drain_then_tail"
+        ]
+      },
+      "predicted": [
+        "EDGE",
+        "GLUE"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "S02",
+      "category": "S",
+      "target": "gorgon_state.py",
+      "description": "commit() freezes t_ns (I2/I9 broken: no strict step)",
+      "status": "killed",
+      "killers": [
+        "EDGE",
+        "GLUE"
+      ],
+      "killing_tests": {
+        "GLUE": [
+          "test_01_pure_idle_session",
+          "test_02_full_utterance_hold_last_tail",
+          "test_03_backpressure_drops_idle_only_i7",
+          "test_05_stale_model_chunk_discarded_in_idle",
+          "test_07_streaming_empty_queue_falls_back_to_idle",
+          "test_10_session_peek_commit_unit",
+          "test_12_metrics_use_public_session_api"
+        ],
+        "EDGE": [
+          "test_glue_chunk_after_done_does_not_resurrect_tail",
+          "test_new_session_seq_zero_fresh_epoch",
+          "test_reconnect_end_to_end_fresh_epoch",
+          "test_one_hour_exact",
+          "test_glue_drain_then_tail"
+        ]
+      },
+      "predicted": [
+        "EDGE",
+        "GLUE"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "S03",
+      "category": "S",
+      "target": "gorgon_state.py",
+      "description": "open(): I5 seq reset removed (belt-and-braces line)",
+      "status": "survived",
+      "killers": [],
+      "killing_tests": {},
+      "predicted": [],
+      "prediction_match": true
+    },
+    {
+      "id": "S04",
+      "category": "S",
+      "target": "gorgon_state.py",
+      "description": "should_drop_idle() returns False always (I7 backpressure gone)",
+      "status": "killed",
+      "killers": [
+        "EDGE",
+        "GLUE"
+      ],
+      "killing_tests": {
+        "GLUE": [
+          "test_03_backpressure_drops_idle_only_i7"
+        ],
+        "EDGE": [
+          "test_reconnect_does_not_inherit_queue"
+        ]
+      },
+      "predicted": [
+        "EDGE",
+        "GLUE"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "S05",
+      "category": "S",
+      "target": "gorgon_glue.py",
+      "description": "hold-last tail removed (HANGOVER falls through to idle)",
+      "status": "killed",
+      "killers": [
+        "EDGE",
+        "GLUE"
+      ],
+      "killing_tests": {
+        "GLUE": [
+          "test_02_full_utterance_hold_last_tail"
+        ],
+        "EDGE": [
+          "test_glue_chunk_after_done_does_not_resurrect_tail",
+          "test_glue_drain_then_tail"
+        ]
+      },
+      "predicted": [
+        "GLUE"
+      ],
+      "prediction_match": false
+    },
+    {
+      "id": "S06",
+      "category": "S",
+      "target": "gorgon_state.py",
+      "description": "accepts_model_chunks(): HANGOVER admitted (tail resurrection bug)",
+      "status": "killed",
+      "killers": [
+        "EDGE"
+      ],
+      "killing_tests": {
+        "EDGE": [
+          "test_glue_chunk_after_done_does_not_resurrect_tail",
+          "test_rejects_after_done",
+          "test_glue_drain_then_tail",
+          "test_hangover_rejects_new_chunks"
+        ]
+      },
+      "predicted": [
+        "EDGE",
+        "GLUE"
+      ],
+      "prediction_match": false
+    },
+    {
+      "id": "S07",
+      "category": "S",
+      "target": "gorgon_glue.py",
+      "description": "encode failure commits anyway (the pre-peek/commit I1 gap bug)",
+      "status": "killed",
+      "killers": [
+        "GLUE"
+      ],
+      "killing_tests": {
+        "GLUE": [
+          "<suite-level failure>"
+        ]
+      },
+      "predicted": [
+        "GLUE"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "S08",
+      "category": "S",
+      "target": "gorgon_state.py",
+      "description": "on_vad_start in HANGOVER: deadline not cancelled (ghost expiry)",
+      "status": "killed",
+      "killers": [
+        "EDGE"
+      ],
+      "killing_tests": {
+        "EDGE": [
+          "test_resume_cancels_old_deadline"
+        ]
+      },
+      "predicted": [
+        "EDGE"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "S09",
+      "category": "S",
+      "target": "gorgon_state.py",
+      "description": "accepts_model_chunks(): IDLE admitted (stale chunks resurface)",
+      "status": "killed",
+      "killers": [
+        "EDGE",
+        "GLUE"
+      ],
+      "killing_tests": {
+        "GLUE": [
+          "test_05_stale_model_chunk_discarded_in_idle",
+          "test_06_model_chunk_length_mismatch"
+        ],
+        "EDGE": [
+          "test_glue_chunk_after_done_does_not_resurrect_tail",
+          "test_rejects_after_done",
+          "test_rejects_in_idle",
+          "test_glue_drain_then_tail",
+          "test_hangover_rejects_new_chunks"
+        ]
+      },
+      "predicted": [
+        "EDGE",
+        "GLUE"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "S10",
+      "category": "S",
+      "target": "gorgon_glue.py",
+      "description": "glue flags: SPEAKING ↔ IDLE swapped when building the frame",
+      "status": "killed",
+      "killers": [
+        "EDGE",
+        "GLUE"
+      ],
+      "killing_tests": {
+        "GLUE": [
+          "test_01_pure_idle_session",
+          "test_02_full_utterance_hold_last_tail",
+          "test_07_streaming_empty_queue_falls_back_to_idle"
+        ],
+        "EDGE": [
+          "test_reconnect_end_to_end_fresh_epoch"
+        ]
+      },
+      "predicted": [
+        "EDGE",
+        "GLUE"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "V01",
+      "category": "V",
+      "target": "facecontract_vectors.json",
+      "description": "frame 0 expect.payload[0] tampered (fixture drift)",
+      "status": "killed",
+      "killers": [
+        "VJS"
+      ],
+      "killing_tests": {
+        "VJS": [
+          "node verify.js: exit 1"
+        ]
+      },
+      "predicted": [
+        "VJS"
+      ],
+      "prediction_match": true
+    },
+    {
+      "id": "V02",
+      "category": "V",
+      "target": "facecontract_vectors.json",
+      "description": "frame 3 frame_hex payload byte flipped (corrupt stored frame)",
+      "status": "killed",
+      "killers": [
+        "VJS"
+      ],
+      "killing_tests": {
+        "VJS": [
+          "node verify.js: exit 1"
+        ]
+      },
+      "predicted": [
+        "VJS"
+      ],
+      "prediction_match": true
+    }
+  ]
+}
