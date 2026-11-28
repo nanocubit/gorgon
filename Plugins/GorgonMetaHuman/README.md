@@ -34,7 +34,14 @@ Source/GorgonMetaHuman/
 │   ├── MetaHumanRetargetComponent.h  # pipeline: crossfade → fade-in → OEF → mapping
 │   └── GorgonMetaHumanActor.h        # wiring actor
 └── Private/ (matching .cpp files)
+    └── FaceContractDecoderTests.cpp  # UE automation tests pinning golden vectors
+                                      # (generated from test_vectors/ue5_golden_vectors.json)
 ```
+
+Conformance testing and troubleshooting: see **INTEGRATION_UE5_DEBUG.md**
+(run the `GorgonMetaHuman.FaceContractDecoder.*` automation suite from the
+Session Frontend; golden hex vectors are generated from the Python canon and
+re-verified by script — regenerate, never hand-edit).
 
 ## Conformance
 
