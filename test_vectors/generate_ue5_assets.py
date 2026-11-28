@@ -2,10 +2,14 @@
 Python canon (facecontract_v141.py):
 
   1. ue5_golden_vectors.json  (this directory) — golden hex vectors +
-     expected fields, generated and validated by the canon itself
+     expected fields, generated and validated by the canon itself. Frame
+     hex is stored as 64-char SEGMENTS (frame_hex_parts) — long single-line
+     hex is error-prone to review and transcribe.
   2. Plugins/GorgonMetaHuman/Source/GorgonMetaHuman/Private/
      FaceContractDecoderTests.cpp — UE automation tests with the vector
-     tables injected from the JSON (hex cannot drift from the canon)
+     tables injected from the JSON. Hex constants are concatenated TEXT()
+     literals (2 segments per physical line); the canon verifier joins them
+     and byte-checks every frame.
 
 Run from the repo root:
     python test_vectors/generate_ue5_assets.py
@@ -31,6 +35,16 @@ CPP_PATH = os.path.join(ROOT, "Plugins", "GorgonMetaHuman", "Source",
                         "FaceContractDecoderTests.cpp")
 
 IDX = fc.NAME_TO_INDEX
+SEG = 64                    # hex chars per segment
+
+
+def hex_parts(hexstr):
+    return [hexstr[i:i + SEG] for i in range(0, len(hexstr), SEG)]
+
+
+def const_name(name, prefix=""):
+    camel = "".join(p.capitalize() for p in name.split("_"))
+    return f"{prefix}{camel}Hex"
 
 
 def rows_to_payload(rows):
@@ -95,73 +109,74 @@ def build_vectors():
     dur_us = 133333
     dur_ns = 133333333
     doc = {"magic": "GRG1", "version": "1.4",
-           "crc_residue": f"{fc.CRC_RESIDUE:08x}", "positive": [],
-           "negative": [], "stream": {}}
+           "crc_residue": f"{fc.CRC_RESIDUE:08x}",
+           "hex_segment_chars": SEG,
+           "positive": [], "negative": [], "stream": {}}
+
+    def entry(name, frame):
+        return {"name": name, "frame_hex_parts": hex_parts(frame.hex()),
+                "expect": frame_expect(frame)}
 
     # ── positive: bs32 idle ──
     rows = [make_idle_row(t) for t in range(4)]
     f = fc.encode(seq=0, t_ns=0, dur_us=dur_us, fps=30, chunk_size=4,
                   payload=rows_to_payload(rows), flags=fc.FLAG_IDLE)
-    doc["positive"].append({
-        "name": "idle_bs32", "frame_hex": f.hex(), "expect": frame_expect(f)})
+    doc["positive"].append(entry("idle_bs32", f))
 
     # ── positive: bs32 speaking ──
     rows = [make_speech_row(t) for t in range(4)]
     f = fc.encode(seq=1, t_ns=dur_ns, dur_us=dur_us, fps=30, chunk_size=4,
                   payload=rows_to_payload(rows), flags=fc.FLAG_SPEAKING)
-    doc["positive"].append({
-        "name": "speech_bs32", "frame_hex": f.hex(), "expect": frame_expect(f)})
+    doc["positive"].append(entry("speech_bs32", f))
 
     # ── positive: bs52 (Extended) ──
     rows = [extend_row(make_speech_row(t), 52) for t in range(4)]
     f = fc.encode(seq=2, t_ns=2 * dur_ns, dur_us=dur_us, fps=30, chunk_size=4,
                   payload=rows_to_payload(rows), flags=fc.FLAG_SPEAKING)
-    doc["positive"].append({
-        "name": "speech_bs52", "frame_hex": f.hex(), "expect": frame_expect(f)})
+    doc["positive"].append(entry("speech_bs52", f))
 
     # ── positive: bs72 (Premium) ──
     rows = [extend_row(make_speech_row(t), 72) for t in range(4)]
     f = fc.encode(seq=3, t_ns=3 * dur_ns, dur_us=dur_us, fps=30, chunk_size=4,
                   payload=rows_to_payload(rows), flags=fc.FLAG_SPEAKING)
-    doc["positive"].append({
-        "name": "speech_bs72", "frame_hex": f.hex(), "expect": frame_expect(f)})
+    doc["positive"].append(entry("speech_bs72", f))
 
     # ── negatives (canon rejection order) ──
     base = doc["positive"][1]           # speech_bs32 as the mutation source
-    raw = bytearray(bytes.fromhex(base["frame_hex"]))
+    raw = bytearray(bytes.fromhex("".join(base["frame_hex_parts"])))
 
     bad = bytearray(raw); bad[40] ^= 0xFF        # payload bit rot
     doc["negative"].append({"name": "corrupted_crc",
-                            "frame_hex": bytes(bad).hex(),
+                            "frame_hex_parts": hex_parts(bytes(bad).hex()),
                             "error_prefix": "CRC mismatch"})
 
     bad = bytearray(raw); bad[0] = ord("X")
     doc["negative"].append({"name": "bad_magic",
-                            "frame_hex": bytes(bad).hex(),
+                            "frame_hex_parts": hex_parts(bytes(bad).hex()),
                             "error_prefix": "bad magic"})
 
     bad = bytearray(raw); bad[5] = 5             # minor 4 → 5
     doc["negative"].append({"name": "unsupported_version",
-                            "frame_hex": bytes(bad).hex(),
+                            "frame_hex_parts": hex_parts(bytes(bad).hex()),
                             "error_prefix": "unsupported version"})
 
     bad = bytearray(raw); bad[6] |= 0x04         # FLAG_HEAD_POSE (v1.5 resv.)
     doc["negative"].append({"name": "unknown_flag_bit_head_pose",
-                            "frame_hex": bytes(_fix_crc(bad)).hex(),
+                            "frame_hex_parts": hex_parts(bytes(_fix_crc(bad)).hex()),
                             "error_prefix": "unknown flag bits"})
 
     bad = bytearray(raw); bad[6] = 0x00          # one-hot violation
     doc["negative"].append({"name": "zero_flags_i3",
-                            "frame_hex": bytes(_fix_crc(bad)).hex(),
+                            "frame_hex_parts": hex_parts(bytes(_fix_crc(bad)).hex()),
                             "error_prefix": "I3 violation"})
 
     doc["negative"].append({"name": "truncated_payload",
-                            "frame_hex": bytes(raw[:-4]).hex(),
+                            "frame_hex_parts": hex_parts(bytes(raw[:-4]).hex()),
                             "error_prefix": "payload_len mismatch"})
 
     bad = bytearray(raw); bad[7] = 72            # lying bs_count header
     doc["negative"].append({"name": "bs_count_mismatch_i6",
-                            "frame_hex": bytes(_fix_crc(bad)).hex(),
+                            "frame_hex_parts": hex_parts(bytes(_fix_crc(bad)).hex()),
                             "error_prefix": "bs_count mismatch"})
 
     # ── stream: 6 frames seq 0..5, alternating idle/speech ──
@@ -175,7 +190,7 @@ def build_vectors():
             flags=fc.FLAG_IDLE if i % 2 == 0 else fc.FLAG_SPEAKING))
     doc["stream"] = {
         "name": "six_frame_i1_i2", "frame_count": 6,
-        "frames_hex": [f.hex() for f in frames],
+        "frames_hex_parts": [hex_parts(f.hex()) for f in frames],
         "seqs": [0, 1, 2, 3, 4, 5],
         "t_ns": [i * dur_ns for i in range(6)],
         "dur_ns": dur_ns,
@@ -192,6 +207,11 @@ CPP_TEMPLATE = r"""// FaceContractDecoderTests.cpp — UE automation conformance
 // NOTE: this file is GENERATED by test_vectors/generate_ue5_assets.py
 // (repo root); regenerate instead of hand-editing the vector tables (the
 // hex payloads are the contract, source of truth: ue5_golden_vectors.json).
+//
+// Hex frames are stored as named constants of CONCATENATED TEXT() literals
+// (2 segments of 64 hex chars per physical line) — no single over-long
+// literal lines. test_vectors/verify_ue5_tests.py joins them and byte-checks
+// every frame against the canon.
 //
 // Coverage:
 //   Positive   — bs32 idle + bs32/52/72 speech frames: full field check,
@@ -258,6 +278,7 @@ namespace
             < 1.0;
     }
 
+__HEX_CONSTANTS__
 __VECTOR_DATA__
 } // namespace
 
@@ -368,42 +389,69 @@ bool FFaceContractDecoder_StreamI1I2::RunTest(const FString& Parameters)
 """
 
 
+def render_hex_const(var_name, hexstr, per_line=2):
+    parts = hex_parts(hexstr)
+    lines = [f"const TCHAR* {var_name} ="]
+    for i in range(0, len(parts), per_line):
+        chunk = parts[i:i + per_line]
+        lines.append("    " + " ".join(f'TEXT("{p}")' for p in chunk))
+    lines[-1] += ";"
+    return "\n".join(lines)
+
+
 def render_cpp(doc):
-    lines = ["// ── generated vector data (from ue5_golden_vectors.json) ──"]
-    lines.append("const FGoldenVector GGoldenVectors[] = {")
+    consts = []
+    names = {}                       # vector name -> C++ const name
+
+    def hexconst(vec_name, hexstr, prefix=""):
+        cname = const_name(vec_name, prefix)
+        names[vec_name] = cname
+        consts.append(render_hex_const(cname, hexstr))
+
+    for p in doc["positive"]:
+        hexconst(p["name"], "".join(p["frame_hex_parts"]))
+    for n in doc["negative"]:
+        hexconst(n["name"], "".join(n["frame_hex_parts"]), prefix="Neg")
+    for i, parts in enumerate(doc["stream"]["frames_hex_parts"]):
+        hexconst(f"stream_frame_{i}", "".join(parts))
+
+    data = []
+    data.append("const FGoldenVector GGoldenVectors[] = {")
     for p in doc["positive"]:
         e = p["expect"]
-        lines.append(
-            '    {{TEXT("{name}"), TEXT("{hex}"), {seq}LL, {tns}LL, {dur}i, '
+        data.append(
+            '    {{TEXT("{name}"), {cname}, {seq}LL, {tns}LL, {dur}i, '
             '{fps}i, {cs}i, {bs}i, {flags}, {jaw}f, {blink}f}},'.format(
-                name=p["name"], hex=p["frame_hex"], seq=e["seq"],
+                name=p["name"], cname=names[p["name"]], seq=e["seq"],
                 tns=e["t_ns"], dur=e["dur_us"], fps=e["fps"],
                 cs=e["chunk_size"], bs=e["bs_count"], flags=e["flags"],
                 jaw=e["jawOpen"], blink=e["eyeBlinkLeft"]))
-    lines.append("};")
-    lines.append("")
-    lines.append("const FNegativeVector GNegativeVectors[] = {")
+    data.append("};")
+    data.append("")
+    data.append("const FNegativeVector GNegativeVectors[] = {")
     for n in doc["negative"]:
-        lines.append('    {{TEXT("{0}"), TEXT("{1}"), TEXT("{2}")}},'.format(
-            n["name"], n["frame_hex"], n["error_prefix"]))
-    lines.append("};")
-    lines.append("")
+        data.append('    {{TEXT("{0}"), {1}, TEXT("{2}")}},'.format(
+            n["name"], names[n["name"]], n["error_prefix"]))
+    data.append("};")
+    data.append("")
     s = doc["stream"]
-    lines.append(f"const int32 GStreamFrameCount = {s['frame_count']};")
-    lines.append(f"const int64 GStreamDurNs = {s['dur_ns']}LL;")
-    lines.append("const int64 GStreamSeqs[] = {" + ", ".join(
+    data.append(f"const int32 GStreamFrameCount = {s['frame_count']};")
+    data.append(f"const int64 GStreamDurNs = {s['dur_ns']}LL;")
+    data.append("const int64 GStreamSeqs[] = {" + ", ".join(
         f"{x}LL" for x in s["seqs"]) + "};")
-    lines.append("const int64 GStreamTns[] = {" + ", ".join(
+    data.append("const int64 GStreamTns[] = {" + ", ".join(
         f"{x}LL" for x in s["t_ns"]) + "};")
-    lines.append("const uint8 GStreamFlags[] = {" + ", ".join(
+    data.append("const uint8 GStreamFlags[] = {" + ", ".join(
         f"0x{x:02X}" for x in s["flags"]) + "};")
-    lines.append("")
-    lines.append("// 6-frame stream hex:")
-    lines.append("const TCHAR* GStreamFramesHex[] = {")
-    for h in s["frames_hex"]:
-        lines.append(f'    TEXT("{h}"),')
-    lines.append("};")
-    return CPP_TEMPLATE.replace("__VECTOR_DATA__", "\n".join(lines))
+    data.append("")
+    data.append("// 6-frame stream hex:")
+    data.append("const TCHAR* GStreamFramesHex[] = {")
+    for i in range(s["frame_count"]):
+        data.append(f"    {names[f'stream_frame_{i}']},")
+    data.append("};")
+
+    cpp = CPP_TEMPLATE.replace("__HEX_CONSTANTS__", "\n".join(consts))
+    return cpp.replace("__VECTOR_DATA__", "\n".join(data))
 
 
 def main():
@@ -418,7 +466,8 @@ def main():
     print(f"written {CPP_PATH} ({os.path.getsize(CPP_PATH)} bytes)")
     for p in doc["positive"]:
         e = p["expect"]
-        print(f"  {p['name']:14s} bytes={len(p['frame_hex'])//2:5d} "
+        full = "".join(p["frame_hex_parts"])
+        print(f"  {p['name']:14s} bytes={len(full)//2:5d} "
               f"crc={e['crc']} jaw={e['jawOpen']:.4f}")
     for n in doc["negative"]:
         print(f"  {n['name']:28s} -> {n['error_prefix']}")
