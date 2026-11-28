@@ -7,7 +7,7 @@ against the Python canon (facecontract_v141.py):
   2. FaceContractDecoderTests.cpp — re-parse every hex constant
      (concatenated TEXT() literals) and byte-check against the canon
 
-Run from the repo root:
+71 checks total. Run from the repo root:
 
     python test_vectors/verify_ue5_tests.py
 """
@@ -120,7 +120,7 @@ def main():
     negatives = neg_re.findall(src)
     stream_names = re.search(
         r'const TCHAR\* GStreamFramesHex\[\] = \{(.*?)\};', src, re.S).group(1)
-    stream_const_names = re.findall(r'\w+', stream_names)
+    stream_const_names = re.findall(r'(\w+)', stream_names)
 
     print(f"parsed cpp: {len(goldens)} positives, {len(negatives)} negatives, "
           f"{len(stream_const_names)} stream refs")
